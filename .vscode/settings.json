@@ -4,5 +4,8 @@
         "titleBar.activeBackground": "#57228F",
         "titleBar.activeForeground": "#FBF9FE"
     },
-    "python.pythonPath": "C:\\Python39\\python.exe"
+    "python.pythonPath": "C:\\Python39\\python.exe",
+    "python.linting.pylintEnabled": false,
+    "python.linting.mypyEnabled": true,
+    "python.linting.enabled": true
 }

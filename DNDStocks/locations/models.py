@@ -6,3 +6,9 @@ class LocationManager(models.Manager):
         location = self.create(
             name = name,
         )
+        return location
+class Location(models.Model):
+    name = models.CharField(unique=True, max_length=50)
+    def __str__(self):
+        return f'{self.name.capitalize()}'
+    objects = LocationManager()
