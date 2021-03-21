@@ -1,14 +1,24 @@
 from django.db import models
+from party.models import Article
 
-# Create your models here.
-class LocationManager(models.Manager):
-    def create_location(self, name):
-        location = self.create(
+from random import seed, random
+
+# Location model
+# Has a many to many table with resources
+class Location(Article):
+    foo = None
+
+# Resource model
+class ResourceManager(models.Manager):
+    def create_resource(self, name, base_value, variance):
+        resource = self.create(
             name = name,
+            base_value = base_value,
+            variance = variance,
         )
-        return location
-class Location(models.Model):
+        return resource
+class Resource(models.Model):
     name = models.CharField(unique=True, max_length=50)
-    def __str__(self):
-        return f'{self.name.capitalize()}'
-    objects = LocationManager()
+    base_value = models.FloatField()
+    variance = models.FloatField()
+    objects = ResourceManager()
