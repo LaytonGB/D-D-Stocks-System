@@ -11,6 +11,7 @@ class Article(models.Model):
     name = models.CharField(unique=True, max_length=50)
     class Meta:
         abstract = True
+    objects = ArticleManager()
 
 # Party model
 class PartyManager(models.Manager):
