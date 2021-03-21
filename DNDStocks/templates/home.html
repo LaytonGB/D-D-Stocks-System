@@ -5,7 +5,7 @@
     {% if pages %}
         <div class="row">
             {% for page in pages %}
-                <a href="/{{page}}/" class="page-link ">{{page|capfirst}}</a>
+                <a href="/{{page}}/" class="mx-3 btn btn-dark" role="button">{{page|capfirst}}</a>
             {% endfor %}
         </div>
     {% endif %}
