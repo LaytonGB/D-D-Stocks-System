@@ -22,7 +22,7 @@ class PartyManager(models.Manager):
         )
         return party
 class Party(models.Model):
-    member = models.ManyToManyField(to='Character', related_name='party',)
+    members = models.ManyToManyField(to='Character', related_name='party',)
     location = models.ForeignKey(to='locations.Location', on_delete=DO_NOTHING)
     journey_count = models.IntegerField(default=1)
     objects = PartyManager()
