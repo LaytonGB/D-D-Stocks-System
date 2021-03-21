@@ -4,8 +4,8 @@
     <h1 class="display-4 pt">D&D With the Gang</h1>
     {% if pages %}
         <div class="row">
-            {% for page in pages %}
-                <a href="/{{page}}/" class="mx-3 btn btn-dark" role="button">{{page|capfirst}}</a>
+            {% for page, url in pages %}
+                <a href="{{url}}" class="mx-3 btn btn-dark" role="button">{{page|capfirst}}</a>
             {% endfor %}
         </div>
     {% endif %}

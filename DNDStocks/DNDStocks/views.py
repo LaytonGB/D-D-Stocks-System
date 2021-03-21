@@ -5,8 +5,9 @@ def home_page(request):
     context = {
         'title': 'Home',
         'pages': [
-            'party',
-            'locations'
+            ['party', '/party/'],
+            ['locations', '/locations/'],
+            ['travel', '/party/travel/'],
         ]
     }
     return render(request, 'home.html', context)
