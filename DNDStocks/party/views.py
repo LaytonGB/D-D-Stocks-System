@@ -14,11 +14,18 @@ def travel_page(request):
     party = Party.objects.get(id=1)
     current_location = party.location
     all_locations = {current_location, *list(Location.objects.all())} # <--- KEEP AN EYE ON THIS
+    all_resources = Resource.objects.all()
+
+    # Add party resources to inventory table
+    for r in all_resources:
+        try:
+            party.inventory.get(resource_id=r.id)
+        except:
+            party.inventory.add(r)
 
     # Trading calc
     seed(party.journey_count)
     local_resources = []
-    all_resources = Resource.objects.all()
     for r in all_resources:
         if random() >= 0.05:
             adjustment = random()

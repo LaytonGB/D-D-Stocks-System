@@ -23,14 +23,17 @@ class PartyManager(models.Manager):
         )
         return party
 class Party(models.Model):
-    members = models.ManyToManyField(to='Character', related_name='party',)
-    location = models.ForeignKey(to='locations.Location', on_delete=DO_NOTHING)
+    members = models.ManyToManyField('Character', related_name='party',)
+    location = models.ForeignKey('locations.Location', on_delete=DO_NOTHING)
     journey_count = models.IntegerField(default=1)
     gold = models.FloatField(default=0)
+    inventory = models.ManyToManyField('locations.Resource', through='Inventory')
     objects = PartyManager()
 
 class Inventory(models.Model):
-    party = models.ForeignKey(Party, on_delete=DO_NOTHING)
+    party = models.ForeignKey(Party, related_name='party', on_delete=DO_NOTHING)
+    resource = models.ForeignKey('locations.Resource', on_delete=DO_NOTHING)
+    quantity = models.FloatField(default=0)
 
 # Player Character model
 class Character(Article):
