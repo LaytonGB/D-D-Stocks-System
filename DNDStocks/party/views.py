@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 
 from .models import Party, Inventory, History
 from locations.models import Location, Resource
@@ -17,7 +17,7 @@ def travel_page(request):
 
     # Add party travel location if needed
     history = party.history_set
-    if history.all().first() is None or current_location.id != history.all().order_by('-id').first().location_id:
+    if history is None or current_location.id != history.all().order_by('-id').first().location_id:
         try:
             History.objects.add_history(party, current_location, history.filter(party_id=party.id).filter(location_id=current_location.id).visit_count + 1)
         except:
@@ -55,8 +55,39 @@ def travel_page(request):
         'all_locations': all_locations,
         'local_resources': local_resources,
     }
+
     return render(request, 'travel.html', context)
+
+def new_travel(request):
+    new_location_id = request.POST.get('change_location_select')
+    if new_location_id is not None:
+        party = Party.objects.get(id=1)
+        new_location = Location.objects.get(id=new_location_id)
+        try:
+            visit_count = party.history_set.filter(location_id=new_location_id).order_by('-id').first().visit_count
+        except:
+            visit_count = 1
+
+        History.objects.add_history(party, new_location, visit_count)
+
+        setattr(party, 'location', new_location)
+        setattr(party, 'journey_count', party.journey_count + 1)
+        party.save()
+
+    return redirect('/party/travel/')
 
 def undo_travel(request):
     party = Party.objects.get(id=1)
-    return travel_page(request)
+
+    if party.journey_count > 1:
+        history = History.objects.filter(party_id=party.id).order_by('-id')
+        last_location_id = list(history)[1].location_id
+        last_location = Location.objects.get(id=last_location_id)
+
+        setattr(party, 'location', last_location)
+        setattr(party, 'journey_count', party.journey_count - 1)
+        party.save()
+
+        history.first().delete()
+
+    return redirect('/party/travel/')

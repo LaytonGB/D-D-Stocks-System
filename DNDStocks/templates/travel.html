@@ -10,6 +10,7 @@
         {% if party.journey_count > 1 %}
                 <div class="col"></div>
                 <form action="/party/travel/undo/" method="post">
+                    {% csrf_token %}
                     <button class="col-auto btn btn-primary">Undo Last Journey</button>
                 </form>
         {% endif %}
@@ -23,7 +24,7 @@
 
     <div class="row">
         <div class="container">
-            <form action="#" method="post" class="form-group">
+            <form action="/party/travel/to/" method="post" class="form-group" id="change_location_form">
                 {% csrf_token %}
                 <select name="change_location_select" id="change_location_select" class="form-control">
                     {% if all_locations %}
@@ -127,8 +128,9 @@
 
     // add event to location select
     const location_selector = document.getElementById('change_location_select');
+    const location_form = document.getElementById('change_location_form');
     location_selector.addEventListener('change', function () {
-        if (this.value && this.value != '{{ current_location.id }}') this.submit();
+        if (this.value && this.value != '{{ current_location.id }}') location_form.submit();
     })
 
     // trading output
@@ -141,7 +143,7 @@
     const output_number = document.getElementById('trade_output_number');
     const confirm_btn = document.getElementById('confirm_trade');
     [buy_quantity, sell_quantity].forEach(function (e) {
-        e.addEventListener('change', function () {
+        e.addEventListener('change', function () { // TODO
             const t = buy_quantity.value - sell_quantity.value;
             if (t === 0) {
 
