@@ -4,72 +4,111 @@
 <div class="container text-center">
 {% comment %} title and undo {% endcomment %}
     <div class="row w-100">
-        <h1 class="col">Travel</h1>
-        {% if party.journey_count > 0 %}
-            <button class="col-auto btn btn-primary">Undo Last Journey</button>
+        <div class="col"></div>
+        <h1 class="col-auto">Travel & Trade</h1>
+        <div class="col row">
+        {% if party.journey_count > 1 %}
+                <div class="col"></div>
+                <form action="/party/travel/undo/" method="post">
+                    <button class="col-auto btn btn-primary">Undo Last Journey</button>
+                </form>
         {% endif %}
+        </div>
     </div>
 
-{% comment %} left half {% endcomment %}
-    <div class="row">
-        <div class="col-6">
-            <h3 class="text-center w-100">Current</h3>
-            <h4>{{ current_location.name }}</h4>
-            {% if current_location_img %}
-                <img src="#" alt="{{current_location.name}} Image">
-            {% endif %}
-        </div>
+    <h2 class="text-center w-100">{{ current_location.name }}</h2>
+    {% if current_location_img %}
+        <img src="#" alt="{{current_location.name}} Image">
+    {% endif %}
 
-{% comment %} right half {% endcomment %}
-        <div class="col-6">
-            <div class="row col-auto">
-                <h3 class="text-center w-100">Change</h3>
-                <div class="container">
-                    <form action="#" method="post" class="form-group">
-                        <select name="change_location_select" id="change_location_select" class="form-control">
-                            {% if all_locations %}
-                                {% for l in all_locations %}
-                                    <option value="{{l.id}}">{{l.name}}</option>
-                                {% endfor %}
-                            {% else %}
-                                <option value="">None Available</option>
-                            {% endif %}
-                        </select>
-                    </form>
-                </div>
-            </div>
+    <div class="row">
+        <div class="container">
+            <form action="#" method="post" class="form-group">
+                {% csrf_token %}
+                <select name="change_location_select" id="change_location_select" class="form-control">
+                    {% if all_locations %}
+                        <option value="">Travel to location...</option>
+                        {% for l in all_locations %}
+                            <option value="{{l.id}}">{{l.name}}</option>
+                        {% endfor %}
+                    {% else %}
+                        <option value="">None Available</option>
+                    {% endif %}
+                </select>
+            </form>
+        </div>
+    </div>
 
 {% comment %} trading section {% endcomment %}
             {% if local_resources %}
             <div class="row mt-4">
-                <h3 class="text-center w-100">Trading</h3>
-                <div class="row w-100 text-light">
-                    <h5 class="col">Resource</h5>
-                    <h6 class="col">Buy Price</h6>
-                    <h6 class="col">Sell Price</h6>
-                </div>
-                {% for id, name, buy_price, sell_price in local_resources %}
-                    <div class="row w-100">
-                        <h5 class="col mx-2">{{ name|capfirst }}</h5>
-                        <h6 class="col mx-2">{{ buy_price|floatformat:2 }}</h6>
-                        <h6 class="col mx-2">{{ sell_price|floatformat:2 }}</h6>
+                <h2 class="text-center w-100">Trading</h2>
+
+    {% comment %} party inventory {% endcomment %}
+                <div class="row w-100 m-0 mb-3">
+                    <h3 class="text-center w-100">Your Inventory</h3>
+                    <div class="row w-100 text-warning">
+                        <div class="col"></div>
+                        <h5 class="col-auto">Gold</h5>
+                        <h5 class="col-auto">{{ party.gold|floatformat:2 }}</h5>
+                        <div class="col"></div>
                     </div>
-                {% endfor %}
-                <form action="#" method="post" class="form-group row">
-                    <select name="resource_select" id="resource_select" class="form-control m-0 col">
+                    <div class="row w-100 text-light">
+                        <h5 class="col">Resource</h5>
+                        <h6 class="col">Quantity (lbs)</h6>
+                        <h6 class="col">Base Worth</h6>
+                    </div>
+                    {% for id, name, quantity, base_value in inventory %}
+                        <div class="row w-100">
+                            <h5 class="col">{{ name|capfirst }}</h5>
+                            <h6 class="col">{{ quantity|floatformat:2 }}</h6>
+                            <h6 class="col">{{ base_value|floatformat:2 }}</h6>
+                        </div>
+                    {% endfor %}
+                </div>
+
+    {% comment %} local prices {% endcomment %}
+                <div class="row w-100 m-0 mb-3">
+                    <h3 class="text-center w-100">Local Traders</h3>
+                    <div class="row w-100 text-light">
+                        <h5 class="col">Resource</h5>
+                        <h6 class="col">Buy Price</h6>
+                        <h6 class="col">Sell Price</h6>
+                    </div>
+                    {% for id, name, buy_price, sell_price in local_resources %}
+                        <div class="row w-100">
+                            <h5 class="col">{{ name|capfirst }}</h5>
+                            <h6 class="col">{{ buy_price|floatformat:2 }}</h6>
+                            <h6 class="col">{{ sell_price|floatformat:2 }}</h6>
+                        </div>
+                    {% endfor %}
+                </div>
+
+    {% comment %} trade menu {% endcomment %}
+                <form action="#" method="post" class="form-group container row w-100">
+                    {% csrf_token %}
+                    <select name="resource_select" id="resource_select" class="form-control mx-2 my-2 col">
                         <option value="">Select resource</option>
                         {% for id, name, b, s in local_resources %}
                             <option value="{{id}}">{{name|capfirst}}</option>
                         {% endfor %}
                     </select>
-                    <input type="number" name="resource_buy_amount" id="resource_buy_amount" placeholder="Buy amount" class="form-control mx-2 col">
-                    <input type="number" name="resource_sell_amount" id="resource_sell_amount" placeholder="Sell amount" class="form-control mx-2 col">
+                    <div class="p-0 m-0 mx-2 my-2 col">
+                        <input type="number" name="resource_buy_amount" id="resource_buy_amount" placeholder="Buy amount" class="form-control">
+                        <div id="resource_buy_feedback" class="invalid-feedback text-left">You don't have enough Gold.</div>
+                    </div>
+                    <div class="p-0 m-0 mx-2 my-2 col">
+                        <input type="number" name="resource_sell_amount" id="resource_sell_amount" placeholder="Sell amount" class="form-control">
+                        <div id="resource_sell_feedback" class="invalid-feedback text-left">You don't have that much.</div>
+                    </div>
+                    <div class="row w-100">
+                        <h3 class="col" id="trade_output_text"></h3>
+                        <h3 class="col" id="trade_output_number"></h3>
+                        <div class="col">
+                            <button class="btn btn-warning" id="confirm_trade" style="visibility: hidden; opacity: 0%; transition: opacity .5s ease;">Make the Deal</button>
+                        </div>
+                    </div>
                 </form>
-                <div class="row w-100">
-                    <h3 class="col" id="trade_output_text"></h3>
-                    <h3 class="col" id="trade_output_number"></h3>
-                    <button class="btn btn-warning" id="confirm_trade" style="visibility: hidden; opacity: 0%; transition: .5s;">Make the Deal</button>
-                </div>
             </div>
             {% endif %}
         </div>
@@ -84,20 +123,31 @@
 (function () {
     // django variables
     const local_resources = {{ local_resources|safe }};
+    const party_resources = {{ inventory|safe }};
 
     // add event to location select
     const location_selector = document.getElementById('change_location_select');
     location_selector.addEventListener('change', function () {
-        if (this.value != '{{ current_location.id }}') this.submit();
+        if (this.value && this.value != '{{ current_location.id }}') this.submit();
     })
 
     // trading output
     const trade_resource = document.getElementById('resource_select');
     const buy_quantity = document.getElementById('resource_buy_amount');
+    const buy_feedback = document.getElementById('resource_buy_feedback');
     const sell_quantity = document.getElementById('resource_sell_amount');
+    const sell_feedback = document.getElementById('resource_sell_feedback');
     const output_text = document.getElementById('trade_output_text');
     const output_number = document.getElementById('trade_output_number');
     const confirm_btn = document.getElementById('confirm_trade');
+    [buy_quantity, sell_quantity].forEach(function (e) {
+        e.addEventListener('change', function () {
+            const t = buy_quantity.value - sell_quantity.value;
+            if (t === 0) {
+
+            }
+        })
+    })
     buy_quantity.addEventListener('change', function () {
         sell_quantity.value = '';
     });
@@ -109,26 +159,65 @@
     });
     function update_trade_output() {
         confirm_btn.style.visibility = 'hidden';
-        confirm_btn.style.opacity = '0%';
-        if (!trade_resource.value || (!buy_quantity.value && !sell_quantity.value) ) {
+        confirm_btn.style.opacity = '0';
+
+        // find the resource being traded
+        let r;
+        let party_has_resources = false;
+        let party_has_gold = false;
+        let prof_loss = '';
+        let total = 0;
+        try {
+            r = party_resources.find(x => x[0] == trade_resource.value); // necessary double equals
+
+            // calculate total costs or profit
+            const local_r = local_resources.find(x => x[0] == trade_resource.value);
+            prof_loss = buy_quantity.value ? 'Cost' : 'Profit';
+            const amount = prof_loss === 'Cost' ? buy_quantity.value : sell_quantity.value;
+            total = prof_loss === 'Cost' ?
+                amount * local_r[2]:
+                amount * local_r[3];
+
+            // quantity checks and feedback
+            sell_feedback.innerHTML = `You don't have that much ${trade_resource.selectedOptions[0].innerHTML}.`;
+            if (r) {
+                if (prof_loss === 'Cost' && total > {{ party.gold }}) buy_quantity.classList.add('is-invalid');
+                else {
+                    buy_quantity.classList.remove('is-invalid');
+                    party_has_gold = true;
+                }
+                if (prof_loss === 'Profit' && sell_quantity.value > r[2]) sell_quantity.classList.add('is-invalid');
+                else {
+                    sell_quantity.classList.remove('is-invalid');
+                    party_has_resources = true;
+                }
+            }
+
+        } catch {}
+
+
+        // dont show profit / cost if
+        // there's no resource selected
+        // both the buy and sell quantities are empty
+        // party doesn't have the resources to sell that much
+        // party doesnt have the gold to buy that much
+        if (!trade_resource.value || (!buy_quantity.value && !sell_quantity.value)) {
             output_text.innerHTML = '';
             output_number.innerHTML = '';
             return;
         }
 
-        const r_id = parseInt(trade_resource.value);
-        const prof_loss = buy_quantity.value ? 'Cost' : 'Profit';
+        // show the quantitive profit or loss
         output_text.innerHTML = prof_loss;
-        const amount = prof_loss === 'Cost' ? buy_quantity.value : sell_quantity.value;
-        const total = prof_loss === 'Cost' ?
-            amount * local_resources.find(x => x[0] === r_id)[2]:
-            amount * local_resources.find(x => x[0] === r_id)[3];
         output_number.innerHTML = Math.round((total + Number.EPSILON) * 100) / 100;
 
-        setTimeout(function() {
-            confirm_btn.style.visibility = 'visible';
-            confirm_btn.style.opacity = '100%';
-        }, 2000);
+        // show the confirm deal button
+        if (party_has_resources && party_has_gold) {
+            setTimeout(function() {
+                confirm_btn.style.visibility = 'visible';
+                confirm_btn.style.opacity = '1';
+            }, 2000);
+        }
     }
 })();
 

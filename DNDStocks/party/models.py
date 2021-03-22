@@ -28,12 +28,27 @@ class Party(models.Model):
     journey_count = models.IntegerField(default=1)
     gold = models.FloatField(default=0)
     inventory = models.ManyToManyField('locations.Resource', through='Inventory')
+    history = models.ManyToManyField('locations.Location', related_name='history', through='History')
     objects = PartyManager()
 
 class Inventory(models.Model):
-    party = models.ForeignKey(Party, related_name='party', on_delete=DO_NOTHING)
+    party = models.ForeignKey(Party, related_name='resource_set', on_delete=DO_NOTHING)
     resource = models.ForeignKey('locations.Resource', on_delete=DO_NOTHING)
     quantity = models.FloatField(default=0)
+
+class HistoryManager(models.Manager):
+    def add_history(self, party, location, count):
+        history = self.create(
+            party = party,
+            location = location,
+            visit_count = count,
+        )
+        return history
+class History(models.Model):
+    party = models.ForeignKey(Party, related_name='history_set', on_delete=DO_NOTHING)
+    location = models.ForeignKey('locations.Location', related_name='party_history_set', on_delete=DO_NOTHING)
+    visit_count = models.IntegerField(default=1)
+    objects = HistoryManager()
 
 # Player Character model
 class Character(Article):
