@@ -31,7 +31,22 @@ def travel_page(request):
             party.inventory.add(r)
 
     # Trading calc and party inventory
+    local_resources, inventory = get_stocks(party)
+
+    context = {
+        'title': 'Travel Page',
+        'party': party,
+        'inventory': inventory,
+        'current_location': current_location,
+        'all_locations': all_locations,
+        'local_resources': local_resources,
+    }
+
+    return render(request, 'travel.html', context)
+
+def get_stocks(party):
     seed(party.journey_count)
+    all_resources = Resource.objects.all()
     local_resources = []
     inventory = []
     for r in all_resources:
@@ -46,17 +61,7 @@ def travel_page(request):
                 price * 1.1,
                 price * 0.9,
             ])
-
-    context = {
-        'title': 'Travel Page',
-        'party': party,
-        'inventory': inventory,
-        'current_location': current_location,
-        'all_locations': all_locations,
-        'local_resources': local_resources,
-    }
-
-    return render(request, 'travel.html', context)
+    return local_resources, inventory
 
 def new_travel(request):
     new_location_id = request.POST.get('change_location_select')
@@ -90,4 +95,59 @@ def undo_travel(request):
 
         history.first().delete()
 
-    return redirect('/party/travel/')
+    return redirect('/party/travel/', request)
+
+def trade_deal(request):
+    resource = request.POST.get('resource_select') and int(request.POST.get('resource_select'))
+    buy_amt = request.POST.get('resource_buy_amount') and int(request.POST.get('resource_buy_amount'))
+    sell_amt = request.POST.get('resource_sell_amount') and int(request.POST.get('resource_sell_amount'))
+    print(f'resource_id:{resource} | buy_amt:{buy_amt} | sell_amt:{sell_amt}')
+
+    if resource and (buy_amt or sell_amt):
+        if buy_amt and sell_amt:
+            x = buy_amt - sell_amt
+            if x == 0:
+                return redirect('/party/travel/', request)
+            elif x > 0:
+                buy_amt = x
+                sell_amt = None
+            else:
+                sell_amt = x
+                buy_amt = None
+
+        party = Party.objects.get(id=1)
+        local_resources, inventory = get_stocks(party)
+
+        if buy_amt:
+            print('buying')
+            # if party has gold, perform trade
+            cost = buy_amt * next(r for r in local_resources if r[0] == resource)[2]
+            if party.gold >= cost:
+                try: # get inventory entry
+                    inv = party.resource_set.get(resource_id=resource)
+                except: # create inventory entry if it didn't exist
+                    res = Resource.objects.get(id=resource)
+                    party.inventory.add(resource)
+                    inv = party.resource_set.get(resource_id=resource)
+
+                setattr(party, 'gold', party.gold - cost)
+                party.save()
+                setattr(inv, 'quantity', inv.quantity + buy_amt) # adjust
+                inv.save()
+                print('bought')
+
+        elif sell_amt:
+            # if party has resources, perform trade
+            profit = sell_amt * next(r for r in local_resources if r[0] == resource)[3]
+            try:
+                inv = party.resource_set.get(resource_id=resource)
+                if inv and inv.quantity >= sell_amt:
+                    setattr(inv, 'quantity', inv.quantity - sell_amt)
+                    inv.save()
+                    setattr(party, 'gold', party.gold + profit)
+                    party.save()
+
+            except:
+                pass
+
+    return redirect('/party/travel/', request)

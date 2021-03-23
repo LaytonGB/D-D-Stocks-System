@@ -86,25 +86,30 @@
                 </div>
 
     {% comment %} trade menu {% endcomment %}
-                <form action="#" method="post" class="form-group container row w-100">
+                <form action="/party/trade/deal/" method="post" class="form-group container row w-100" id='container trade_form mt-3'>
                     {% csrf_token %}
-                    <select name="resource_select" id="resource_select" class="form-control mx-2 my-2 col">
-                        <option value="">Select resource</option>
-                        {% for id, name, b, s in local_resources %}
-                            <option value="{{id}}">{{name|capfirst}}</option>
-                        {% endfor %}
-                    </select>
-                    <div class="p-0 m-0 mx-2 my-2 col">
-                        <input type="number" name="resource_buy_amount" id="resource_buy_amount" placeholder="Buy amount" class="form-control">
+                    <div class="col">
+                        <h5 class="text-left row">Resource</h5>
+                        <select name="resource_select" id="resource_select" class="form-control row">
+                            <option value="">Select resource</option>
+                            {% for id, name, b, s in local_resources %}
+                                <option value="{{id}}">{{name|capfirst}}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col">
+                        <h5 class="text-left row">Buy Quantity</h5>
+                        <input type="number" name="resource_buy_amount" id="resource_buy_amount" placeholder="Buy amount" class="form-control row">
                         <div id="resource_buy_feedback" class="invalid-feedback text-left">You don't have enough Gold.</div>
                     </div>
-                    <div class="p-0 m-0 mx-2 my-2 col">
-                        <input type="number" name="resource_sell_amount" id="resource_sell_amount" placeholder="Sell amount" class="form-control">
+                    <div class="col">
+                        <h5 class="text-left row">Sell Quantity</h5>
+                        <input type="number" name="resource_sell_amount" id="resource_sell_amount" placeholder="Sell amount" class="form-control row">
                         <div id="resource_sell_feedback" class="invalid-feedback text-left">You don't have that much.</div>
                     </div>
                     <div class="row w-100">
-                        <h3 class="col" id="trade_output_text"></h3>
-                        <h3 class="col" id="trade_output_number"></h3>
+                        <h3 class="col" id="trade_output_text" name="trade_output_text"></h3>
+                        <h3 class="col" id="trade_output_number" name="trade_output_number"></h3>
                         <div class="col">
                             <button class="btn btn-warning" id="confirm_trade" style="visibility: hidden; opacity: 0%; transition: opacity .5s ease;">Make the Deal</button>
                         </div>
@@ -133,7 +138,8 @@
         if (this.value && this.value != '{{ current_location.id }}') location_form.submit();
     })
 
-    // trading output
+    // variables
+    const trade_form = document.getElementById('trade_form');
     const trade_resource = document.getElementById('resource_select');
     const buy_quantity = document.getElementById('resource_buy_amount');
     const buy_feedback = document.getElementById('resource_buy_feedback');
@@ -142,23 +148,34 @@
     const output_text = document.getElementById('trade_output_text');
     const output_number = document.getElementById('trade_output_number');
     const confirm_btn = document.getElementById('confirm_trade');
-    [buy_quantity, sell_quantity].forEach(function (e) {
-        e.addEventListener('change', function () { // TODO
-            const t = buy_quantity.value - sell_quantity.value;
-            if (t === 0) {
 
+    // trading output
+    [buy_quantity, sell_quantity].forEach(function (e) {
+        e.addEventListener('change', function () {
+            const t = +buy_quantity.value - +sell_quantity.value;
+            if (t === 0) {
+                buy_quantity.value = '';
+                sell_quantity.value = '';
+            } else if (t > 0) {
+                buy_quantity.value = t;
+                sell_quantity.value = '';
+            } else {
+                buy_quantity.value = '';
+                sell_quantity.value = -t;
             }
         })
-    })
-    buy_quantity.addEventListener('change', function () {
-        sell_quantity.value = '';
-    });
-    sell_quantity.addEventListener('change', function () {
-        buy_quantity.value = '';
     });
     [trade_resource, buy_quantity, sell_quantity].forEach(function(x) {
         x.addEventListener('change', update_trade_output);
     });
+
+    // Listen to confirm_trade button
+    confirm_btn.addEventListener('onClick', function () {
+        if (trade_resource.value && bool(buy_quantity.value) != bool(sell_quantity.value)) {
+            trade_form.submit();
+        }
+    });
+
     function update_trade_output() {
         confirm_btn.style.visibility = 'hidden';
         confirm_btn.style.opacity = '0';
@@ -195,7 +212,7 @@
                 }
             }
 
-        } catch {}
+        } catch {} // if party has no resource or locale has no resource
 
 
         // dont show profit / cost if
