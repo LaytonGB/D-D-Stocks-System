@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="text-center container">
-    <h1 class="display-4 pt">D&D With the Gang</h1>
+    <h1 class="display-4">D&D With the Gang</h1>
+    <h3><a href="/accounts/login/">
+        <button class="btn btn-primary">Click Here to Login</button>
+    </a></h3>
     {% if pages %}
         <div class="row">
             {% for page, url in pages %}
