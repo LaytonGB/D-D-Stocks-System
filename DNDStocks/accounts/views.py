@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.contrib.auth.models import User
 
-def get_user(request) -> User or None:
+def get_user(request) -> User:
     user = request.user
     if isinstance(user, User):
         return user
