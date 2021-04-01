@@ -28,7 +28,7 @@ class Party(models.Model):
     journey_count = models.IntegerField(default=1)
     gold = models.FloatField(default=0)
     inventory = models.ManyToManyField('locations.Resource', through='Inventory')
-    history = models.ManyToManyField('locations.Location', related_name='history', through='History')
+    travel_history = models.ManyToManyField('locations.Location', related_name='history', through='TravelHistory')
     objects = PartyManager()
 
 class Inventory(models.Model):
@@ -36,7 +36,7 @@ class Inventory(models.Model):
     resource = models.ForeignKey('locations.Resource', on_delete=DO_NOTHING)
     quantity = models.FloatField(default=0)
 
-class HistoryManager(models.Manager):
+class TravelHistoryManager(models.Manager):
     def add_history(self, party, location, count):
         history = self.create(
             party = party,
@@ -44,11 +44,28 @@ class HistoryManager(models.Manager):
             visit_count = count,
         )
         return history
-class History(models.Model):
-    party = models.ForeignKey(Party, related_name='history_set', on_delete=CASCADE)
-    location = models.ForeignKey('locations.Location', related_name='party_history_set', on_delete=DO_NOTHING)
+class TravelHistory(models.Model):
+    party = models.ForeignKey(Party, related_name='travel_history_set', on_delete=CASCADE)
+    location = models.ForeignKey('locations.Location', related_name='travel_history_set', on_delete=DO_NOTHING)
     visit_count = models.IntegerField(default=1)
-    objects = HistoryManager()
+    objects = TravelHistoryManager()
+
+class TradeHistoryManager(models.Manager):
+    def add_history(self, party, location, resource, money_spent, quantity):
+        return self.create(
+            party = party,
+            location = location,
+            resource = resource,
+            money_spent = money_spent,
+            quantity = quantity,
+        )
+class TradeHistory(models.Model):
+    party = models.ForeignKey('party.Party', related_name='trade_history_set', on_delete=DO_NOTHING)
+    location = models.ForeignKey('locations.Location', related_name='trade_history_set', on_delete=DO_NOTHING)
+    resource = models.ForeignKey("locations.Resource", on_delete=DO_NOTHING)
+    money_spent = models.FloatField(null=True)
+    quantity = models.IntegerField(null=True)
+    objects = TradeHistoryManager()
 
 # Player Character model
 class Character(Article):

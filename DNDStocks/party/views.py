@@ -1,7 +1,7 @@
 from typing import Any, Tuple
 from django.shortcuts import redirect, render
 
-from .models import Party, Inventory, History
+from .models import Party, Inventory, TravelHistory
 from locations.models import Location, LocationResource, Resource
 
 from random import seed, random
@@ -20,9 +20,9 @@ def travel_page(request):
     history = party.history_set
     if history is None or current_location.id != history.all().order_by('-id').first().location_id:
         try:
-            History.objects.add_history(party, current_location, history.filter(party_id=party.id).filter(location_id=current_location.id).visit_count + 1)
+            TravelHistory.objects.add_history(party, current_location, history.filter(party_id=party.id).filter(location_id=current_location.id).visit_count + 1)
         except:
-            History.objects.add_history(party, current_location, 1)
+            TravelHistory.objects.add_history(party, current_location, 1)
 
     # Add party resources to inventory table if needed
     for r in all_resources:
@@ -95,7 +95,7 @@ def new_travel(request):
         except:
             visit_count = 1
 
-        History.objects.add_history(party, new_location, visit_count)
+        TravelHistory.objects.add_history(party, new_location, visit_count)
 
         setattr(party, 'location', new_location)
         setattr(party, 'journey_count', party.journey_count + 1)
@@ -107,7 +107,7 @@ def undo_travel(request):
     party = Party.objects.get(id=1)
 
     if party.journey_count > 1:
-        history = History.objects.filter(party_id=party.id).order_by('-id')
+        history = TravelHistory.objects.filter(party_id=party.id).order_by('-id')
         last_location_id = list(history)[1].location_id
         last_location = Location.objects.get(id=last_location_id)
 
