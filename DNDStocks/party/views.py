@@ -1,7 +1,8 @@
+from typing import Any, Tuple
 from django.shortcuts import redirect, render
 
 from .models import Party, Inventory, History
-from locations.models import Location, Resource
+from locations.models import Location, LocationResource, Resource
 
 from random import seed, random
 
@@ -31,7 +32,7 @@ def travel_page(request):
             party.inventory.add(r)
 
     # Trading calc and party inventory
-    local_resources, inventory = get_stocks(party)
+    local_resources, inventory, local_specialities = get_stocks(party)
 
     context = {
         'title': 'Travel Page',
@@ -40,28 +41,49 @@ def travel_page(request):
         'current_location': current_location,
         'all_locations': all_locations,
         'local_resources': local_resources,
+        'local_specialities': local_specialities,
     }
 
     return render(request, 'travel.html', context)
 
-def get_stocks(party):
+def get_stocks(party: Party) -> Tuple[list[Any], list[Any], list[int]]:
+    """ Using the party journey count as the random seed,
+        Return the local resources, party inventory, and local specialities in a tuple
+        applying any necessary randomization.
+
+        local_resources: resource id, resource name, buying price, selling price
+        inventory: resource id, resource name, # resource in party inventory, resource base value
+        local_specialities: resource id list for all special deals"""
     seed(party.journey_count)
-    all_resources = Resource.objects.all()
+    location_resources = LocationResource.objects.filter(location_id=party.location.id)
+    all_resources: list[Resource] = Resource.objects.all()
     local_resources = []
     inventory = []
+    local_specialities = []
     for r in all_resources:
-        r_set = party.resource_set.filter(resource_id=r.id).first()
+        lr: LocationResource
+        try:
+            lr = location_resources.get(resource_id=r.id)
+        except:
+            lr = None
+        r_set = party.resource_set.filter(resource_id=r.id).first() # get the entry in party personal resources for resource
         inventory.append([r.id, r.name, r_set.quantity, r.base_value])
-        if random() >= 0.05:
-            adjustment = random()
-            price = r.base_value * ( 1 + r.variance * (adjustment * 2 - 1) )
+        tender_probability = lr.probability or 0.95
+        if random() < tender_probability:
+            price = get_price(r, lr)
             local_resources.append([
                 r.id,
                 r.name,
-                price * 1.1,
+                price * 1.15,
                 price * 0.9,
             ])
-    return local_resources, inventory
+            if lr is not None:
+                local_specialities.append(r.id)
+    return local_resources, inventory, local_specialities
+
+def get_price(r:Resource, lr:LocationResource) -> float:
+    adjustment = random()
+    return float((lr.base_value or r.base_value) * ( 1 + (lr.variance or r.variance) * (adjustment * 2 - 1) ))
 
 def new_travel(request):
     new_location_id = request.POST.get('change_location_select')
@@ -98,12 +120,12 @@ def undo_travel(request):
     return redirect('/party/travel/', request)
 
 def trade_deal(request):
-    resource = request.POST.get('resource_select') and int(request.POST.get('resource_select'))
+    r_id = request.POST.get('resource_select') and int(request.POST.get('resource_select'))
     buy_amt = request.POST.get('resource_buy_amount') and int(request.POST.get('resource_buy_amount'))
     sell_amt = request.POST.get('resource_sell_amount') and int(request.POST.get('resource_sell_amount'))
-    print(f'resource_id:{resource} | buy_amt:{buy_amt} | sell_amt:{sell_amt}')
+    print(f'resource_id:{r_id} | buy_amt:{buy_amt} | sell_amt:{sell_amt}')
 
-    if resource and (buy_amt or sell_amt):
+    if r_id and (buy_amt or sell_amt):
         if buy_amt and sell_amt:
             x = buy_amt - sell_amt
             if x == 0:
@@ -115,32 +137,30 @@ def trade_deal(request):
                 sell_amt = x
                 buy_amt = None
 
-        party = Party.objects.get(id=1)
-        local_resources, inventory = get_stocks(party)
+        party: Party = Party.objects.get(id=1)
+        local_resources, inventory, local_specialities = get_stocks(party)
 
         if buy_amt:
-            print('buying')
             # if party has gold, perform trade
-            cost = buy_amt * next(r for r in local_resources if r[0] == resource)[2]
+            cost = buy_amt * next(r for r in local_resources if r[0] == r_id)[2]
             if party.gold >= cost:
                 try: # get inventory entry
-                    inv = party.resource_set.get(resource_id=resource)
+                    inv = party.resource_set.get(resource_id=r_id)
                 except: # create inventory entry if it didn't exist
-                    res = Resource.objects.get(id=resource)
-                    party.inventory.add(resource)
-                    inv = party.resource_set.get(resource_id=resource)
+                    res = Resource.objects.get(id=r_id)
+                    party.inventory.add(res)
+                    inv = party.resource_set.get(resource_id=r_id)
 
                 setattr(party, 'gold', party.gold - cost)
                 party.save()
                 setattr(inv, 'quantity', inv.quantity + buy_amt) # adjust
                 inv.save()
-                print('bought')
 
         elif sell_amt:
             # if party has resources, perform trade
-            profit = sell_amt * next(r for r in local_resources if r[0] == resource)[3]
+            profit = sell_amt * next(r for r in local_resources if r[0] == r_id)[3]
             try:
-                inv = party.resource_set.get(resource_id=resource)
+                inv = party.resource_set.get(resource_id=r_id)
                 if inv and inv.quantity >= sell_amt:
                     setattr(inv, 'quantity', inv.quantity - sell_amt)
                     inv.save()
