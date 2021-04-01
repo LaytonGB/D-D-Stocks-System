@@ -1,12 +1,14 @@
 from django.db import models
+from django.db.models.deletion import CASCADE
+
 from party.models import Article
 
 from random import seed, random
 
 # Location model
-# Has a many to many table with resources
+# Has a many to many table with Resource
 class Location(Article):
-    foo = None
+    resources = models.ManyToManyField("Resource", related_name="custom_resources", through="LocationResource")
 
 # Resource model
 class ResourceManager(models.Manager):
@@ -21,4 +23,23 @@ class Resource(models.Model):
     name = models.CharField(unique=True, max_length=50)
     base_value = models.FloatField()
     variance = models.FloatField()
+    probability = models.FloatField(null=True)
     objects = ResourceManager()
+
+# Custom location resources model
+class LocationResourceManager(models.Manager):
+    def create_resource(self, location:Location, resource:Resource, is_speciality:bool=False, base_value:float=None, probability:float=None):
+        return self.create(
+            location = location,
+            resource = resource,
+            is_speciality = is_speciality,
+            base_value = base_value,
+            probability = probability,
+        )
+class LocationResource(models.Model):
+    location = models.ForeignKey("Location", on_delete=CASCADE)
+    resource = models.ForeignKey("Resource", on_delete=CASCADE)
+    is_speciality = models.BooleanField(default=False)
+    base_value = models.FloatField(null=True, default=None)
+    probability = models.FloatField(null=True, default=None)
+    objects = LocationResourceManager()

@@ -1,5 +1,5 @@
 from django.db import models
-from django.db.models.deletion import DO_NOTHING
+from django.db.models.deletion import CASCADE, DO_NOTHING
 
 class ArticleManager(models.Manager):
     def create_article(self, name):
@@ -32,7 +32,7 @@ class Party(models.Model):
     objects = PartyManager()
 
 class Inventory(models.Model):
-    party = models.ForeignKey(Party, related_name='resource_set', on_delete=DO_NOTHING)
+    party = models.ForeignKey(Party, related_name='resource_set', on_delete=CASCADE)
     resource = models.ForeignKey('locations.Resource', on_delete=DO_NOTHING)
     quantity = models.FloatField(default=0)
 
@@ -45,7 +45,7 @@ class HistoryManager(models.Manager):
         )
         return history
 class History(models.Model):
-    party = models.ForeignKey(Party, related_name='history_set', on_delete=DO_NOTHING)
+    party = models.ForeignKey(Party, related_name='history_set', on_delete=CASCADE)
     location = models.ForeignKey('locations.Location', related_name='party_history_set', on_delete=DO_NOTHING)
     visit_count = models.IntegerField(default=1)
     objects = HistoryManager()
