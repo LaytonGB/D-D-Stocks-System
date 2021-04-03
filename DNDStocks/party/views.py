@@ -114,15 +114,16 @@ def undo_travel(request):
     party = Party.objects.get(id=1)
 
     if party.journey_count > 1:
-        history = TravelHistory.objects.filter(party_id=party.id).order_by('-id')
-        last_location_id = list(history)[1].location_id
-        last_location = Location.objects.get(id=last_location_id)
+        party.revert_trade(9999) # undo all trades at this location
 
-        setattr(party, 'location', last_location)
-        setattr(party, 'journey_count', party.journey_count - 1)
+        history = party.travel_history_set.order_by('-id')
+        last_location = list(history)[1].location
+
+        setattr(party, 'location', last_location) # revert location
+        setattr(party, 'journey_count', party.journey_count - 1) # revert journey count
         party.save()
 
-        history.first().delete()
+        history.first().delete() # delete history entry
 
     return redirect('/party/travel/', request)
 
