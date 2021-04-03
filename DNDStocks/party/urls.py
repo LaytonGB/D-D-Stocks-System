@@ -7,4 +7,6 @@ urlpatterns = [
     path('travel/to/', views.new_travel, name='new_travel'),
     path('travel/undo/', views.undo_travel, name='undo_travel'),
     path('trade/deal/', views.trade_deal, name='trade_deal'),
+    path('trade/undo/', views.undo_trade, name='undo_trade'),
+    path('trade/history/', views.trade_history, name='trade_history'),
 ]

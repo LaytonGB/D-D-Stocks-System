@@ -12,6 +12,14 @@ https://docs.djangoproject.com/en/3.1/ref/settings/
 
 import os
 from pathlib import Path
+from typing import List
+
+from django.contrib.messages import constants as messages
+MESSAGE_TAGS = {
+    messages.SUCCESS: 'text-success',
+    messages.WARNING: 'text-warning',
+    messages.ERROR: 'text-danger',
+}
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -26,7 +34,7 @@ SECRET_KEY = '-vfv@jp#3804*xka6nbo5jnv1jo78)putb-rj#6tog)7dui&g5'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS: List[str] = []
 
 
 # Application definition
@@ -35,6 +43,7 @@ INSTALLED_APPS = [
     'accounts.apps.AccountsConfig',
     'party.apps.PartyConfig',
     'locations.apps.LocationsConfig',
+    'mathfilters',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

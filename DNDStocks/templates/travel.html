@@ -2,7 +2,20 @@
 {% block content %}
 
 <div class="container text-center">
-{% comment %} title and undo {% endcomment %}
+{% comment %} messages - success and warning {% endcomment %}
+    {% if messages %}
+    <div class="container border bg-dark justify-content-center align-content-center">
+        {% for message in messages %}
+        <ul class="my-3 py-0">
+            <li {% if message.tags %}class="{{ message.tags }}"{% endif %}>
+                {{ message }}
+            </li>
+        </ul>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+{% comment %} title and undo travel {% endcomment %}
     <div class="row w-100">
         <div class="col"></div>
         <h1 class="col-auto">Travel & Trade</h1>
@@ -86,6 +99,19 @@
                 </div>
 
     {% comment %} trade menu {% endcomment %}
+                <div class="container row mt-3">
+                    <div class="col"></div>
+                    <div class="mx-3 row">
+                        <form action="/party/trade/undo/" method="post" class="m-0 col-auto">
+                            {% csrf_token %}
+                            <button class="btn btn-warning">Undo Last Trade</button>
+                        </form>
+                        <form action="/party/trade/history/" method="post" class="m-0 col-auto">
+                            {% csrf_token %}
+                            <button class="btn btn-primary">View Trade History</button>
+                        </form>
+                    </div>
+                </div>
                 <form action="/party/trade/deal/" method="post" class="form-group container row w-100" id='container trade_form mt-3'>
                     {% csrf_token %}
                     <div class="col">

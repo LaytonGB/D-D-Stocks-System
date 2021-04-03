@@ -1,5 +1,6 @@
 from typing import Any, Tuple
 from django.shortcuts import redirect, render
+from django.contrib import messages
 
 from .models import Party, Inventory, TradeHistory, TravelHistory
 from locations.models import Location, LocationResource, Resource
@@ -17,10 +18,10 @@ def travel_page(request):
     all_resources = Resource.objects.all()
 
     # Add party travel location if needed
-    history = party.history_set
-    if history is None or current_location.id != history.all().order_by('-id').first().location_id:
+    history = party.travel_history_set.order_by('-id')
+    if history is None or current_location != history.first():
         try:
-            TravelHistory.objects.add_history(party, current_location, history.filter(party_id=party.id).filter(location_id=current_location.id).visit_count + 1)
+            TravelHistory.objects.add_history(party, current_location, history.filter(location=current_location).visit_count + 1)
         except:
             TravelHistory.objects.add_history(party, current_location, 1)
 
@@ -98,7 +99,7 @@ def new_travel(request):
         party = Party.objects.get(id=1)
         new_location = Location.objects.get(id=new_location_id)
         try:
-            visit_count = party.history_set.filter(location_id=new_location_id).order_by('-id').first().visit_count
+            visit_count = party.travel_history_set.filter(location_id=new_location_id).order_by('-id').first().visit_count
         except:
             visit_count = 1
 
@@ -139,7 +140,8 @@ def trade_deal(request):
             trade_amt = buy_amt - sell_amt
             if trade_amt == 0:
                 return redirect('/party/travel/', request)
-
+        else:
+            trade_amt = buy_amt or sell_amt
         party: Party = Party.objects.get(id=1)
         local_resources, inventory, local_specialities = get_stocks(party)
 
@@ -150,6 +152,18 @@ def trade_deal(request):
 def undo_trade(request):
     """ Revert the party gold and inventory by refunding or restoring the last traded quantities. """
     party: Party = Party.objects.get(id=1)
-    party.revert_trade()
+    x = party.revert_trade()
+    if x < 1:
+        messages.error(request, 'An error occured, last trade could not be undone.')
 
     return redirect('/party/travel/', request)
+
+def trade_history(request):
+    party = Party.objects.first()
+    t_his = party.trade_history_set.order_by('-id')
+
+    context = {
+        'title': 'Trade History',
+        'trade_history': t_his,
+    }
+    return render(request, 'history/trade_history.html', context)

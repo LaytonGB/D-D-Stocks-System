@@ -107,7 +107,7 @@ class Party(models.Model):
                 inv_res.save()
                 last_trade.delete() # delete the trade history entry
             else:
-                return n
+                return n - 1
         return count
 
 class Inventory(models.Model):
