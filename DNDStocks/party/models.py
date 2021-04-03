@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Sum
 from django.db.models.deletion import CASCADE, DO_NOTHING
 
 class ArticleManager(models.Manager):
@@ -31,6 +32,8 @@ class Party(models.Model):
     travel_history = models.ManyToManyField('locations.Location', related_name='history', through='TravelHistory')
     objects = PartyManager()
 
+    def weight(self):
+        return ( f'{self.resource_set.aggregate(total_weight=Sum("quantity"))["total_weight"]} lbs' )
     def get_resource(self, r):
         """ Returns the inventory entry for the named resource for this party, or creates
             the entry if one does not exist. """
