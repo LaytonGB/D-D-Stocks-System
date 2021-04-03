@@ -1,7 +1,7 @@
 from typing import Any, Tuple
 from django.shortcuts import redirect, render
 
-from .models import Party, Inventory, TravelHistory
+from .models import Party, Inventory, TradeHistory, TravelHistory
 from locations.models import Location, LocationResource, Resource
 
 from random import seed, random
@@ -66,9 +66,14 @@ def get_stocks(party: Party) -> Tuple[list[Any], list[Any], list[int]]:
             lr = location_resources.get(resource_id=r.id)
         except:
             lr = None
-        r_set = party.resource_set.filter(resource_id=r.id).first() # get the entry in party personal resources for resource
+        r_set = party.get_resource(r) # get the entry in party personal resources for resource
         inventory.append([r.id, r.name, r_set.quantity, r.base_value])
-        tender_probability = lr.probability or 0.95
+        if lr is not None:
+            local_specialities.append(r.id)
+            tender_probability = lr.probability or 0.95
+        else:
+            tender_probability = 0.95
+
         if random() < tender_probability:
             price = get_price(r, lr)
             local_resources.append([
@@ -77,13 +82,15 @@ def get_stocks(party: Party) -> Tuple[list[Any], list[Any], list[int]]:
                 price * 1.15,
                 price * 0.9,
             ])
-            if lr is not None:
-                local_specialities.append(r.id)
+
     return local_resources, inventory, local_specialities
 
 def get_price(r:Resource, lr:LocationResource) -> float:
     adjustment = random()
-    return float((lr.base_value or r.base_value) * ( 1 + (lr.variance or r.variance) * (adjustment * 2 - 1) ))
+    try:
+        return float((lr.base_value or r.base_value) * ( 1 + (lr.variance or r.variance) * (adjustment * 2 - 1) ))
+    except:
+        return float(r.base_value * ( 1 + r.variance * (adjustment * 2 - 1) ))
 
 def new_travel(request):
     new_location_id = request.POST.get('change_location_select')
@@ -120,54 +127,28 @@ def undo_travel(request):
     return redirect('/party/travel/', request)
 
 def trade_deal(request):
-    r_id = request.POST.get('resource_select') and int(request.POST.get('resource_select'))
+    resource_id = request.POST.get('resource_select') and int(request.POST.get('resource_select'))
+    resource = Resource.objects.get(id=resource_id)
     buy_amt = request.POST.get('resource_buy_amount') and int(request.POST.get('resource_buy_amount'))
     sell_amt = request.POST.get('resource_sell_amount') and int(request.POST.get('resource_sell_amount'))
-    print(f'resource_id:{r_id} | buy_amt:{buy_amt} | sell_amt:{sell_amt}')
+    trade_amt: float
 
-    if r_id and (buy_amt or sell_amt):
+    if resource_id and (buy_amt or sell_amt):
         if buy_amt and sell_amt:
-            x = buy_amt - sell_amt
-            if x == 0:
+            trade_amt = buy_amt - sell_amt
+            if trade_amt == 0:
                 return redirect('/party/travel/', request)
-            elif x > 0:
-                buy_amt = x
-                sell_amt = None
-            else:
-                sell_amt = x
-                buy_amt = None
 
         party: Party = Party.objects.get(id=1)
         local_resources, inventory, local_specialities = get_stocks(party)
 
-        if buy_amt:
-            # if party has gold, perform trade
-            cost = buy_amt * next(r for r in local_resources if r[0] == r_id)[2]
-            if party.gold >= cost:
-                try: # get inventory entry
-                    inv = party.resource_set.get(resource_id=r_id)
-                except: # create inventory entry if it didn't exist
-                    res = Resource.objects.get(id=r_id)
-                    party.inventory.add(res)
-                    inv = party.resource_set.get(resource_id=r_id)
+        party.trade(resource, trade_amt, local_resources)
 
-                setattr(party, 'gold', party.gold - cost)
-                party.save()
-                setattr(inv, 'quantity', inv.quantity + buy_amt) # adjust
-                inv.save()
+    return redirect('/party/travel/', request)
 
-        elif sell_amt:
-            # if party has resources, perform trade
-            profit = sell_amt * next(r for r in local_resources if r[0] == r_id)[3]
-            try:
-                inv = party.resource_set.get(resource_id=r_id)
-                if inv and inv.quantity >= sell_amt:
-                    setattr(inv, 'quantity', inv.quantity - sell_amt)
-                    inv.save()
-                    setattr(party, 'gold', party.gold + profit)
-                    party.save()
-
-            except:
-                pass
+def undo_trade(request):
+    """ Revert the party gold and inventory by refunding or restoring the last traded quantities. """
+    party: Party = Party.objects.get(id=1)
+    party.revert_trade()
 
     return redirect('/party/travel/', request)
