@@ -131,17 +131,14 @@ def undo_travel(request):
 def trade_deal(request):
     resource_id = request.POST.get('resource_select') and int(request.POST.get('resource_select'))
     resource = Resource.objects.get(id=resource_id)
-    buy_amt = request.POST.get('resource_buy_amount') and int(request.POST.get('resource_buy_amount'))
-    sell_amt = request.POST.get('resource_sell_amount') and int(request.POST.get('resource_sell_amount'))
+    buy_amt = (request.POST.get('resource_buy_amount') and int(request.POST.get('resource_buy_amount'))) or 0
+    sell_amt = (request.POST.get('resource_sell_amount') and int(request.POST.get('resource_sell_amount'))) or 0
     trade_amt: float
 
     if resource_id and (buy_amt or sell_amt):
-        if buy_amt and sell_amt:
-            trade_amt = buy_amt - sell_amt
-            if trade_amt == 0:
-                return redirect('/party/travel/', request)
-        else:
-            trade_amt = buy_amt or sell_amt
+        trade_amt = buy_amt - sell_amt
+        if trade_amt == 0:
+            return redirect('/party/travel/', request)
         party: Party = Party.objects.get(id=1)
         local_resources, inventory, local_specialities = get_stocks(party)
 

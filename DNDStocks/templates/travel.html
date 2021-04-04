@@ -114,24 +114,26 @@
                 </div>
                 <form action="/party/trade/deal/" method="post" class="form-group container row w-100" id='container trade_form mt-3'>
                     {% csrf_token %}
-                    <div class="col">
-                        <h5 class="text-left row">Resource</h5>
-                        <select name="resource_select" id="resource_select" class="form-control row">
-                            <option value="">Select resource</option>
-                            {% for id, name, b, s in local_resources %}
-                                <option value="{{id}}">{{name|capfirst}}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col">
-                        <h5 class="text-left row">Buy Quantity</h5>
-                        <input type="number" name="resource_buy_amount" id="resource_buy_amount" placeholder="Buy amount" class="form-control row">
-                        <div id="resource_buy_feedback" class="invalid-feedback text-left">You don't have enough Gold.</div>
-                    </div>
-                    <div class="col">
-                        <h5 class="text-left row">Sell Quantity</h5>
-                        <input type="number" name="resource_sell_amount" id="resource_sell_amount" placeholder="Sell amount" class="form-control row">
-                        <div id="resource_sell_feedback" class="invalid-feedback text-left">You don't have that much.</div>
+                    <div class="container-fluid row m-0 p-0 my-3">
+                        <div class="col">
+                            <h5 class="text-left row">Resource</h5>
+                            <select name="resource_select" id="resource_select" class="form-control row">
+                                <option value="">Select resource</option>
+                                {% for id, name, b, s in local_resources %}
+                                    <option value="{{id}}">{{name|capfirst}}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col">
+                            <h5 class="text-left row">Buy Quantity</h5>
+                            <input type="number" name="resource_buy_amount" id="resource_buy_amount" placeholder="Buy amount" class="form-control row">
+                            <div id="resource_buy_feedback" class="invalid-feedback text-left">You don't have enough Gold.</div>
+                        </div>
+                        <div class="col">
+                            <h5 class="text-left row">Sell Quantity</h5>
+                            <input type="number" name="resource_sell_amount" id="resource_sell_amount" placeholder="Sell amount" class="form-control row">
+                            <div id="resource_sell_feedback" class="invalid-feedback text-left">You don't have that much.</div>
+                        </div>
                     </div>
                     <div class="row w-100">
                         <h3 class="col" id="trade_output_text" name="trade_output_text"></h3>
