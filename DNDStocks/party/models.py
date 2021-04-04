@@ -1,3 +1,4 @@
+from django.contrib import messages
 from django.db import models
 from django.db.models import Sum
 from django.db.models.deletion import CASCADE, DO_NOTHING
@@ -47,8 +48,9 @@ class Party(models.Model):
             setattr(i, 'quantity', 0)
             i.save()
         return i
-    def trade(self, resource, trade_amt: float, local_resources: list) -> bool:
+    def trade(self, resource, trade_amt: float, local_resources: list) -> bool: # TODO add error messages
         """ Perform a trade and add the trade to trade history. """
+        travel_hist = self.travel_history_set.order_by('-id').first()
         if trade_amt > 0: # buying resources
             print('buying')
             # if party has gold, perform trade
@@ -59,8 +61,7 @@ class Party(models.Model):
                 try: # get inventory entry
                     inv = self.resource_set.get(resource_id=resource.id)
                 except: # create inventory entry if it didn't exist
-                    self.inventory.add(resource)
-                    inv = self.resource_set.get(resource_id=resource.id)
+                    inv = self.inventory.add(resource)
                 print('adjusting resources')
                 # reduce gold
                 setattr(self, 'gold', self.gold - cost)
@@ -70,7 +71,7 @@ class Party(models.Model):
                 inv.save()
                 print('adding history')
                 # add to trade history
-                self.trade_history_set.add_history(self, self.location, resource, cost, trade_amt)
+                self.trade_history_set.add_history(self, travel_hist, resource, cost, trade_amt)
             else:
                 return False
         elif trade_amt < 0: # selling resources
@@ -91,24 +92,51 @@ class Party(models.Model):
                 else:
                     return False
             except:
-                pass
+                return False
         return True
-    def revert_trade(self, count=1):
+    def revert_trade(self, request, count=1):
         """ Revert one or more trade deals. Returns the number of trade deals successfully reverted. """
+        print(f'Reverting trade...')
         trade_history = self.trade_history_set.order_by('-id')
         for n in range(1, count + 1):
+            print(f'Trade {n}:')
             last_trade: TradeHistory = trade_history.first()
 
-            if trade_history is not None and last_trade is not None and self.location is last_trade.location:
+            print(f'Trade Hist: {trade_history} | Last Trade: {last_trade} | Self Location: {self.location} | Last Trade Location: {last_trade.location}')
+            if trade_history is not None and last_trade is not None:
                 inv_res: Inventory = self.get_resource(last_trade.resource) # the specific inventory row
                 setattr(self, 'gold', self.gold + last_trade.money_spent) # refund or charge party gold
                 self.save()
                 setattr(inv_res, 'quantity', inv_res + last_trade.quantity_gained) # refund or charge party inventory
                 inv_res.save()
+                if self.location is not last_trade.location:
+                    messages.warning(request, 'Current location did not match up with the location of last trade.')
                 last_trade.delete() # delete the trade history entry
             else:
-                return n - 1
-        return count
+                if n == 1:
+                    messages.error(request, 'Last trade could not be undone.')
+                else:
+                    messages.info(request, 'No trades were remaining, but it was requested that more be undone.')
+        return request
+    def revert_journey(self, request, count=1):
+        if self.journey_count > 1:
+            all_trades = list(self.trade_history_set.order_by('-id'))
+            loc_trades = []
+            for t in all_trades:
+                if t.location is self.location:
+                    loc_trades.append(t)
+                else:
+                    break
+            print(f'Attempting to revert the last {len(loc_trades)}')
+            self.revert_trade(request, len(loc_trades)) # undo all trades at this location
+
+            history = self.travel_history_set.order_by('-id')
+            last_location = list(history)[1].location
+            print(f'Reverting location to: {last_location.name}')
+            self.location = last_location # revert location
+            self.journey_count = self.journey_count - 1 # revert journey count
+            history.first().delete() # delete history entry
+        return
 
 class Inventory(models.Model):
     party = models.ForeignKey(Party, related_name='resource_set', on_delete=CASCADE)
@@ -130,18 +158,18 @@ class TravelHistory(models.Model):
     objects = TravelHistoryManager()
 
 class TradeHistoryManager(models.Manager):
-    def add_history(self, party, location, resource, money_spent, quantity_gained):
+    def add_history(self, party, travel_hist, resource, money_spent, quantity_gained):
         print('history creation reached')
         return self.create(
             party = party,
-            location = location,
+            location_hist = travel_hist,
             resource = resource,
             money_spent = money_spent,
             quantity_gained = quantity_gained,
         )
 class TradeHistory(models.Model):
     party = models.ForeignKey(Party, related_name='trade_history_set', on_delete=DO_NOTHING)
-    location = models.ForeignKey('locations.Location', related_name='trade_history_set', on_delete=DO_NOTHING)
+    location_hist = models.ForeignKey("TravelHistory", related_name='trade_history_set', on_delete=models.CASCADE, null=True)
     resource = models.ForeignKey("locations.Resource", on_delete=DO_NOTHING)
     money_spent = models.FloatField(null=True)
     quantity_gained = models.IntegerField(null=True)

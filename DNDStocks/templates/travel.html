@@ -4,7 +4,7 @@
 <div class="container text-center">
 {% comment %} messages - success and warning {% endcomment %}
     {% if messages %}
-    <div class="container rounded bg-dark justify-content-center align-content-center p-1">
+    <div class="container rounded bg-dark justify-content-center align-content-center p-1 mb-2">
         {% for message in messages %}
         <ul class="my-3 py-0{% if message.tags %} {{ message.tags }}{% endif %}">
             {{ message }}
@@ -105,9 +105,9 @@
                             {% csrf_token %}
                             <button class="btn btn-warning">Undo Last Trade</button>
                         </form>
-                        <form action="/party/trade/history/" method="post" class="m-0 col-auto">
+                        <form action="/party/history/" method="post" class="m-0 col-auto">
                             {% csrf_token %}
-                            <button class="btn btn-primary">View Trade History</button>
+                            <button class="btn btn-primary">View Party History</button>
                         </form>
                     </div>
                 </div>

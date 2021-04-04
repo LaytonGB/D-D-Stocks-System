@@ -1,6 +1,9 @@
 from typing import Any, Tuple
+from django.db import connection
 from django.shortcuts import redirect, render
 from django.contrib import messages
+
+from DNDStocks.views import dictfetchall
 
 from .models import Party, Inventory, TradeHistory, TravelHistory
 from locations.models import Location, LocationResource, Resource
@@ -112,19 +115,10 @@ def new_travel(request):
     return redirect('/party/travel/')
 
 def undo_travel(request):
+    """ Undo the last journey, returning the party to the previous location
+        and reverting all of their trades between the last journey and now. """
     party = Party.objects.get(id=1)
-
-    if party.journey_count > 1:
-        party.revert_trade(9999) # undo all trades at this location
-
-        history = party.travel_history_set.order_by('-id')
-        last_location = list(history)[1].location
-
-        setattr(party, 'location', last_location) # revert location
-        setattr(party, 'journey_count', party.journey_count - 1) # revert journey count
-        party.save()
-
-        history.first().delete() # delete history entry
+    request = party.revert_journey(request)
 
     return redirect('/party/travel/', request)
 
@@ -149,18 +143,28 @@ def trade_deal(request):
 def undo_trade(request):
     """ Revert the party gold and inventory by refunding or restoring the last traded quantities. """
     party: Party = Party.objects.get(id=1)
-    x = party.revert_trade()
-    if x < 1:
-        messages.error(request, 'An error occured, last trade could not be undone.')
-
+    request = party.revert_trade(request)
     return redirect('/party/travel/', request)
 
-def trade_history(request):
+def history_page(request):
     party = Party.objects.first()
-    t_his = party.trade_history_set.order_by('-id')
-
+    history = None
+    with connection.cursor() as cursor:
+        cursor.execute(f"""
+            SELECT
+                trade.id,
+                l.name AS 'location',
+                r.name AS 'resource',
+                trade.quantity_gained AS 'quantity',
+                trade.money_spent AS 'gold'
+            FROM party_tradehistory AS trade, locations_location AS l, locations_resource AS r
+            LEFT JOIN party_travelhistory AS travel ON trade.location_hist_id=travel.id
+            WHERE travel.party_id={party.id} AND l.id=travel.location_id AND r.id=trade.resource_id
+            ORDER BY trade.id desc""")
+        history = dictfetchall(cursor)
+        print(history)
     context = {
-        'title': 'Trade History',
-        'trade_history': t_his,
+        'title': 'Party History',
+        'history': history,
     }
-    return render(request, 'history/trade_history.html', context)
+    return render(request, 'history.html', context)
