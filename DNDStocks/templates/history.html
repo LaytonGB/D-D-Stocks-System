@@ -28,7 +28,7 @@
                     {% endifchanged %}
                     <tr>
                         <td>{% ifchanged  %}<b>{{ t.location }}</b>{% endifchanged %}</td>
-                        <td>{% if t.gold > 0 %} Bought {% elif t.gold < 0 %} Sold {% endif %}</td>
+                        <td>{% if t.gold < 0 %} Bought {% elif t.gold > 0 %} Sold {% endif %}</td>
                         <td>{{ t.quantity|floatformat:0 }}</td>
                         <td>{% if t.resource != None %}{{ t.resource|capfirst }}{% endif %}</td>
                         <td>{{ t.gold|floatformat:2 }}</td>

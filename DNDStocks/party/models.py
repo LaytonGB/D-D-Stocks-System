@@ -48,6 +48,8 @@ class Party(models.Model):
                 return
             i = self.inventory.add(r)
         return i
+    def latest_trade(self):
+        return self.trade_history_set.first() or None
     def trade(self, request, resource, buy_amt: float, local_resources: list): # TODO add error messages
         """ Perform a trade and add the trade to trade history. """
         # gather variables
@@ -63,27 +65,27 @@ class Party(models.Model):
             setattr(inv, 'quantity', inv.quantity + buy_amt)
             inv.save()
             # add history
-            print(f'Resource: {resource.name} | Gold Gained: {profit} | Quantity Purchased: {buy_amt}')
             self.trade_history_set.add_history(self, resource, profit, buy_amt)
         else:
             messages.error(request, 'Transaction failed: Gold or Resources were insufficient.')
         return request
     def revert_trade(self, request, count=1):
         """ Revert one or more trade deals. Returns the number of trade deals successfully reverted. """
-        print(f'Reverting trade...')
-        trade_history = self.trade_history_set.order_by('-id')
+        print(f'Reverting trade(s)...')
+        trade_history = self.trade_history_set
         for n in range(1, count + 1):
             print(f'Trade {n}:')
             last_trade: TradeHistory = trade_history.first()
-
-            print(f'Last Trade: {last_trade.id} | Self Location: {self.location.name} | Last Trade Location: {last_trade.location_hist.location.name}')
+            if last_trade is None:
+                messages.error(request, 'Could not undo last trade - There is no trade history.')
+                return request
             if trade_history is not None and last_trade is not None:
                 inv_res: Inventory = self.get_resource(last_trade.resource) # the specific inventory row
-                setattr(self, 'gold', self.gold + last_trade.money_spent) # refund or charge party gold
+                setattr(self, 'gold', self.gold - last_trade.gold_gained) # refund or charge party gold
                 self.save()
                 setattr(inv_res, 'quantity', inv_res.quantity + last_trade.quantity_gained) # refund or charge party inventory
                 inv_res.save()
-                if self.location is not last_trade.location_hist.location:
+                if self.location_id is not last_trade.location_hist.location_id:
                     messages.warning(request, 'Current location did not match up with the location of last trade.')
                 last_trade.delete() # delete the trade history entry
             else:

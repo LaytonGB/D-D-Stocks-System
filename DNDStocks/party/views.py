@@ -20,7 +20,8 @@ def party_page(request):
 def travel_page(request):
     party: Party = Party.objects.get(id=1)
     current_location = party.location
-    newest_journey = party.latest_journey()
+    latest_journey = party.latest_journey()
+    latest_trade = party.latest_trade()
     all_locations = Location.objects.exclude(id=current_location.id).order_by('name')
     all_resources = Resource.objects.all()
 
@@ -42,6 +43,7 @@ def travel_page(request):
         'all_locations': all_locations,
         'local_resources': local_resources,
         'local_specialities': local_specialities,
+        'latest_trade': latest_trade,
     }
 
     return render(request, 'travel.html', context)
@@ -165,7 +167,7 @@ def history_page(request):
             LEFT join party_tradehistory AS trade ON travel.id=trade.location_hist_id
             LEFT join locations_resource AS res ON trade.resource_id=res.id
             WHERE travel.party_id={party.id}
-            ORDER BY travel.id DESC;
+            ORDER BY trade.id DESC;
         """)
         history = dictfetchall(cursor)
     context = {

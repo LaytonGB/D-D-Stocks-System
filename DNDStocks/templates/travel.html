@@ -23,7 +23,7 @@
                 <div class="col"></div>
                 <form action="/party/travel/undo/" method="post">
                     {% csrf_token %}
-                    <button class="col-auto btn btn-primary">Undo Last Journey</button>
+                    <button class="col-auto btn btn-warning">Undo Last Journey</button>
                 </form>
         {% endif %}
         </div>
@@ -66,18 +66,25 @@
                         <h5 class="col-auto">{{ party.gold|floatformat:2 }}</h5>
                         <div class="col"></div>
                     </div>
-                    <div class="row w-100 text-light">
-                        <h5 class="col">Resource</h5>
-                        <h6 class="col">Quantity (lbs)</h6>
-                        <h6 class="col">Base Worth</h6>
-                    </div>
-                    {% for r in inventory %}
-                        <div class="row w-100">
-                            <h5 class="col">{{ r.name|capfirst }}</h5>
-                            <h6 class="col">{{ r.quantity|floatformat:2 }}</h6>
-                            <h6 class="col">{{ r.base_value|floatformat:2 }}</h6>
+                    {% if inventory %}
+                        <div class="row w-100 text-light">
+                            <h5 class="col">Resource</h5>
+                            <h6 class="col">Quantity (lbs)</h6>
+                            <h6 class="col">Base Worth</h6>
                         </div>
-                    {% endfor %}
+                        {% for r in inventory %}
+                            <div class="row w-100">
+                                <h5 class="col">{{ r.name|capfirst }}</h5>
+                                <h6 class="col">{{ r.quantity|floatformat:2 }}</h6>
+                                <h6 class="col">{{ r.base_value|floatformat:2 }}</h6>
+                            </div>
+                        {% endfor %}
+                        <div class="row w-100">
+                            <h5 class="col text-light">Total</h5>
+                            <h6 class="col text-light">{{ party.weight }}</h6>
+                            <h6 class="col text-light"></h6>
+                        </div>
+                    {% endif %}
                 </div>
 
     {% comment %} local prices {% endcomment %}
@@ -101,10 +108,12 @@
                 <div class="container row mt-3">
                     <div class="col"></div>
                     <div class="mx-3 row">
-                        <form action="/party/trade/undo/" method="post" class="m-0 col-auto">
-                            {% csrf_token %}
-                            <button class="btn btn-warning">Undo Last Trade</button>
-                        </form>
+                        {% if latest_trade %}
+                            <form action="/party/trade/undo/" method="post" class="m-0 col-auto">
+                                {% csrf_token %}
+                                <button class="btn btn-warning">Undo Last Trade</button>
+                            </form>
+                        {% endif %}
                         <form action="/party/history/" method="post" class="m-0 col-auto">
                             {% csrf_token %}
                             <button class="btn btn-primary">View Party History</button>
