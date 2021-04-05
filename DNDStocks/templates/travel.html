@@ -71,11 +71,11 @@
                         <h6 class="col">Quantity (lbs)</h6>
                         <h6 class="col">Base Worth</h6>
                     </div>
-                    {% for id, name, quantity, base_value in inventory %}
+                    {% for r in inventory %}
                         <div class="row w-100">
-                            <h5 class="col">{{ name|capfirst }}</h5>
-                            <h6 class="col">{{ quantity|floatformat:2 }}</h6>
-                            <h6 class="col">{{ base_value|floatformat:2 }}</h6>
+                            <h5 class="col">{{ r.name|capfirst }}</h5>
+                            <h6 class="col">{{ r.quantity|floatformat:2 }}</h6>
+                            <h6 class="col">{{ r.base_value|floatformat:2 }}</h6>
                         </div>
                     {% endfor %}
                 </div>
@@ -118,8 +118,8 @@
                             <h5 class="text-left row">Resource</h5>
                             <select name="resource_select" id="resource_select" class="form-control row">
                                 <option value="">Select resource</option>
-                                {% for id, name, b, s in local_resources %}
-                                    <option value="{{id}}">{{name|capfirst}}</option>
+                                {% for r in local_resources %}
+                                    <option value="{{r.id}}">{{r.name|capfirst}}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -214,15 +214,15 @@
         let prof_loss = '';
         let total = 0;
         try {
-            r = party_resources.find(x => x[0] == trade_resource.value); // necessary double equals
+            r = party_resources.find(x => x.id == trade_resource.value); // necessary double equals
 
             // calculate total costs or profit
-            const local_r = local_resources.find(x => x[0] == trade_resource.value);
+            const local_r = local_resources.find(x => x.id == trade_resource.value);
             prof_loss = buy_quantity.value ? 'Cost' : 'Profit';
             const amount = prof_loss === 'Cost' ? buy_quantity.value : sell_quantity.value;
             total = prof_loss === 'Cost' ?
-                amount * local_r[2]:
-                amount * local_r[3];
+                amount * local_r.buy_price:
+                amount * local_r.sell_price;
 
             // quantity checks and feedback
             sell_feedback.innerHTML = `You don't have that much ${trade_resource.selectedOptions[0].innerHTML}.`;
@@ -245,8 +245,6 @@
         // dont show profit / cost if
         // there's no resource selected
         // both the buy and sell quantities are empty
-        // party doesn't have the resources to sell that much
-        // party doesnt have the gold to buy that much
         if (!trade_resource.value || (!buy_quantity.value && !sell_quantity.value)) {
             output_text.innerHTML = '';
             output_number.innerHTML = '';

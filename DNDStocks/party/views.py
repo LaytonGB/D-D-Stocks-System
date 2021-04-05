@@ -1,5 +1,7 @@
 from pprint import pprint
 from typing import Any, Tuple
+from time import perf_counter
+
 from django.db import connection
 from django.shortcuts import redirect, render
 from django.contrib import messages
@@ -16,15 +18,11 @@ def party_page(request):
     return render(request, 'party.html')
 
 def travel_page(request):
-    party = Party.objects.get(id=1)
+    party: Party = Party.objects.get(id=1)
     current_location = party.location
-    all_locations = {current_location, *list(Location.objects.all())} # <--- KEEP AN EYE ON THIS
+    newest_journey = party.latest_journey()
+    all_locations = Location.objects.exclude(id=current_location.id).order_by('name')
     all_resources = Resource.objects.all()
-
-    # Add party travel location if needed
-    # history = party.travel_history_set.order_by('-id')
-    # if history is None or current_location != history.first():
-    #     print(f'travel_page is calling to add history\nhistory: {history.first().location.name} | current_location: {current_location.name}')
 
     # Add party resources to inventory table if needed
     for r in all_resources:
@@ -69,7 +67,12 @@ def get_stocks(party: Party) -> Tuple[list[Any], list[Any], list[int]]:
         except:
             lr = None
         r_set = party.get_resource(r) # get the entry in party personal resources for resource
-        inventory.append([r.id, r.name, r_set.quantity, r.base_value])
+        inventory.append({
+            'id': r.id,
+            'name': r.name,
+            'quantity': r_set.quantity,
+            'base_value': r.base_value
+        })
         if lr is not None:
             local_specialities.append(r.id)
             tender_probability = lr.probability or 0.95
@@ -126,7 +129,7 @@ def trade_deal(request):
     s_amt = (request.POST.get('resource_sell_amount') and int(request.POST.get('resource_sell_amount'))) or 0
     buy_amt: float
 
-    if resource_id and (b_amt or s_amt):
+    if resource and (b_amt or s_amt):
         buy_amt = b_amt - s_amt
         if buy_amt == 0:
             return redirect('/party/travel/', request)
@@ -134,6 +137,8 @@ def trade_deal(request):
         local_resources, inventory, local_specialities = get_stocks(party)
 
         request = party.trade(request, resource, buy_amt, local_resources)
+    else:
+        messages.error(request, 'Resource or buy and sell amounts were missing.')
 
     return redirect('/party/travel/', request)
 
@@ -154,7 +159,7 @@ def history_page(request):
                 loc.name AS location,
                 res.name AS resource,
                 trade.quantity_gained AS quantity,
-                trade.money_spent AS gold
+                trade.gold_gained AS gold
             FROM locations_location AS loc
             LEFT join party_travelhistory AS travel ON loc.id=travel.location_id
             LEFT join party_tradehistory AS trade ON travel.id=trade.location_hist_id

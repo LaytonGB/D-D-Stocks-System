@@ -52,18 +52,19 @@ class Party(models.Model):
         """ Perform a trade and add the trade to trade history. """
         # gather variables
         price_label = 'buy_price' if buy_amt >= 0 else 'sell_price'
-        cost = buy_amt * next(r for r in local_resources if r.id == resource.id)[price_label]
+        profit = -(buy_amt * next(r for r in local_resources if r['id'] == resource.id)[price_label])
         inv: Inventory = self.get_resource(resource)
         # check limits
-        if self.gold >= cost and inv.quantity >= -buy_amt:
+        if self.gold >= profit and inv.quantity >= -buy_amt:
             # adjust gold
-            setattr(self, 'gold', self.gold - cost)
+            setattr(self, 'gold', self.gold + profit)
             self.save()
             # adjust resources
             setattr(inv, 'quantity', inv.quantity + buy_amt)
             inv.save()
             # add history
-            self.trade_history_set.add_history(self, resource, cost, buy_amt)
+            print(f'Resource: {resource.name} | Gold Gained: {profit} | Quantity Purchased: {buy_amt}')
+            self.trade_history_set.add_history(self, resource, profit, buy_amt)
         else:
             messages.error(request, 'Transaction failed: Gold or Resources were insufficient.')
         return request
@@ -75,14 +76,14 @@ class Party(models.Model):
             print(f'Trade {n}:')
             last_trade: TradeHistory = trade_history.first()
 
-            print(f'Trade Hist: {trade_history} | Last Trade: {last_trade} | Self Location: {self.location} | Last Trade Location: {last_trade.location}')
+            print(f'Last Trade: {last_trade.id} | Self Location: {self.location.name} | Last Trade Location: {last_trade.location_hist.location.name}')
             if trade_history is not None and last_trade is not None:
                 inv_res: Inventory = self.get_resource(last_trade.resource) # the specific inventory row
                 setattr(self, 'gold', self.gold + last_trade.money_spent) # refund or charge party gold
                 self.save()
-                setattr(inv_res, 'quantity', inv_res + last_trade.quantity_gained) # refund or charge party inventory
+                setattr(inv_res, 'quantity', inv_res.quantity + last_trade.quantity_gained) # refund or charge party inventory
                 inv_res.save()
-                if self.location is not last_trade.location:
+                if self.location is not last_trade.location_hist.location:
                     messages.warning(request, 'Current location did not match up with the location of last trade.')
                 last_trade.delete() # delete the trade history entry
             else:
@@ -91,6 +92,8 @@ class Party(models.Model):
                 else:
                     messages.info(request, 'No trades were remaining, but it was requested that more be undone.')
         return request
+    def latest_journey(self):
+        return self.travel_history_set.first() or self.travel_history_set.add_history(self)
     def travel_to(self, request, new_location):
         setattr(self, 'location', new_location)
         setattr(self, 'journey_count', self.journey_count + 1)
@@ -100,22 +103,18 @@ class Party(models.Model):
             messages.error(request, f'Something went wrong when adding travel history.')
         return request
     def revert_travel(self, request, count=1):
+        print('reverting last travel')
         if self.journey_count > 1:
-            all_trades = list(self.trade_history_set.order_by('-id'))
-            loc_trades = []
-            for t in all_trades:
-                if t.location is self.location:
-                    loc_trades.append(t)
-                else:
-                    break
-            print(f'Attempting to revert the last {len(loc_trades)}')
-            self.revert_trade(request, len(loc_trades)) # undo all trades at this location
+            history = self.travel_history_set.all()
+            loc_trades_count = len(self.trade_history_set.filter(location_hist_id=history.first().id))
+            print(f'Attempting to revert the last {loc_trades_count} trades')
+            self.revert_trade(request, loc_trades_count) # undo all trades at this location
 
-            history = self.travel_history_set.order_by('-id')
             last_location = list(history)[1].location
             print(f'Reverting location to: {last_location.name}')
-            self.location = last_location # revert location
-            self.journey_count = self.journey_count - 1 # revert journey count
+            setattr(self, 'location', last_location) # revert location
+            setattr(self, 'journey_count', self.journey_count - 1) # revert journey count
+            self.save()
             history.first().delete() # delete history entry
         return
 
@@ -147,7 +146,7 @@ class TravelHistory(models.Model):
     objects = TravelHistoryManager()
 
 class TradeHistoryManager(models.Manager):
-    def add_history(self, party, resource, money_spent, quantity_gained):
+    def add_history(self, party, resource, gold_gained, quantity_gained):
         print('history creation reached')
         hist: TravelHistory = party.travel_history_set.first() or party.travel_history_set.add_history(party)
         if hist.location.id != party.location.id:
@@ -156,14 +155,14 @@ class TradeHistoryManager(models.Manager):
             party = party,
             location_hist = hist,
             resource = resource,
-            money_spent = money_spent,
+            gold_gained = gold_gained,
             quantity_gained = quantity_gained,
         )
 class TradeHistory(models.Model):
     party = models.ForeignKey(Party, related_name='trade_history_set', on_delete=DO_NOTHING)
     location_hist = models.ForeignKey("TravelHistory", related_name='trade_history_set', on_delete=models.CASCADE, null=True)
     resource = models.ForeignKey("locations.Resource", on_delete=DO_NOTHING)
-    money_spent = models.FloatField(null=True)
+    gold_gained = models.FloatField(null=True)
     quantity_gained = models.IntegerField(null=True)
     objects = TradeHistoryManager()
 
