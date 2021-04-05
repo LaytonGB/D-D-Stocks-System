@@ -111,14 +111,19 @@ class Party(models.Model):
             loc_trades_count = len(self.trade_history_set.filter(location_hist_id=history.first().id))
             print(f'Attempting to revert the last {loc_trades_count} trades')
             self.revert_trade(request, loc_trades_count) # undo all trades at this location
-
-            last_location = list(history)[1].location
+            try:
+                last_location = list(history)[1].location
+            except:
+                setattr(self, 'journey_count', 1)
+                self.save()
+                messages.error(request, 'There is no remaining travel history - Journey count reset to 1.')
+                return request
             print(f'Reverting location to: {last_location.name}')
             setattr(self, 'location', last_location) # revert location
             setattr(self, 'journey_count', self.journey_count - 1) # revert journey count
             self.save()
             history.first().delete() # delete history entry
-        return
+        return request
 
 class Inventory(models.Model):
     party = models.ForeignKey(Party, related_name='resource_set', on_delete=CASCADE)
