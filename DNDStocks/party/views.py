@@ -157,7 +157,7 @@ def history_page(request):
             LEFT join party_tradehistory AS trade ON travel.id=trade.location_hist_id
             LEFT join locations_resource AS res ON trade.resource_id=res.id
             WHERE travel.party_id={party.id}
-            ORDER BY trade.id DESC;
+            ORDER BY travel.id DESC, trade.id DESC
         """)
         history = dictfetchall(cursor)
     context = {
