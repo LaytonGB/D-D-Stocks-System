@@ -13,7 +13,7 @@
     <div class="row container">
         <table class="w-100">
             <tr style="border-bottom: 2px solid black;">
-                <th>Location</th>
+                <th style="border-bottom: 0px;">Location</th>
                 <th>Action</th>
                 <th>Quantity</th>
                 <th>Resource</th>
@@ -29,7 +29,7 @@
                     <tr>
                         <td>{% ifchanged  %}<b>{{ t.location }}</b>{% endifchanged %}</td>
                         <td>{% if t.gold > 0 %} Bought {% elif t.gold < 0 %} Sold {% endif %}</td>
-                        <td>{{ t.quantity|abs|floatformat:2 }}</td>
+                        <td>{{ t.quantity|floatformat:0 }}</td>
                         <td>{% if t.resource != None %}{{ t.resource|capfirst }}{% endif %}</td>
                         <td>{{ t.gold|floatformat:2 }}</td>
                     </tr>

@@ -88,11 +88,11 @@
                         <h6 class="col">Buy Price</h6>
                         <h6 class="col">Sell Price</h6>
                     </div>
-                    {% for id, name, buy_price, sell_price in local_resources %}
+                    {% for r in local_resources %}
                         <div class="row w-100">
-                            <h5 class="col">{{ name|capfirst }}</h5>
-                            <h6 class="col">{{ buy_price|floatformat:2 }}</h6>
-                            <h6 class="col">{{ sell_price|floatformat:2 }}</h6>
+                            <h5 class="col">{{ r.name|capfirst }}</h5>
+                            <h6 class="col">{{ r.buy_price|floatformat:2 }}</h6>
+                            <h6 class="col">{{ r.sell_price|floatformat:2 }}</h6>
                         </div>
                     {% endfor %}
                 </div>

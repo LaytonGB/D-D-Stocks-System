@@ -78,12 +78,12 @@ def get_stocks(party: Party) -> Tuple[list[Any], list[Any], list[int]]:
 
         if random() < tender_probability:
             price = get_price(r, lr)
-            local_resources.append([
-                r.id,
-                r.name,
-                price * 1.15,
-                price * 0.9,
-            ])
+            local_resources.append({
+                'id': r.id,
+                'name': r.name,
+                'buy_price': price * 1.15,
+                'sell_price': price * 0.9,
+            })
 
     return local_resources, inventory, local_specialities
 
@@ -122,18 +122,18 @@ def undo_travel(request):
 def trade_deal(request):
     resource_id = request.POST.get('resource_select') and int(request.POST.get('resource_select'))
     resource = Resource.objects.get(id=resource_id)
-    buy_amt = (request.POST.get('resource_buy_amount') and int(request.POST.get('resource_buy_amount'))) or 0
-    sell_amt = (request.POST.get('resource_sell_amount') and int(request.POST.get('resource_sell_amount'))) or 0
-    trade_amt: float
+    b_amt = (request.POST.get('resource_buy_amount') and int(request.POST.get('resource_buy_amount'))) or 0
+    s_amt = (request.POST.get('resource_sell_amount') and int(request.POST.get('resource_sell_amount'))) or 0
+    buy_amt: float
 
-    if resource_id and (buy_amt or sell_amt):
-        trade_amt = buy_amt - sell_amt
-        if trade_amt == 0:
+    if resource_id and (b_amt or s_amt):
+        buy_amt = b_amt - s_amt
+        if buy_amt == 0:
             return redirect('/party/travel/', request)
         party: Party = Party.objects.get(id=1)
         local_resources, inventory, local_specialities = get_stocks(party)
 
-        request = party.trade(request, resource, trade_amt, local_resources)
+        request = party.trade(request, resource, buy_amt, local_resources)
 
     return redirect('/party/travel/', request)
 
@@ -163,8 +163,6 @@ def history_page(request):
             ORDER BY travel.id DESC;
         """)
         history = dictfetchall(cursor)
-    print('--- PARTY HISTORY ---')
-    pprint(history)
     context = {
         'title': 'Party History',
         'history': history,

@@ -51,7 +51,8 @@ class Party(models.Model):
     def trade(self, request, resource, buy_amt: float, local_resources: list): # TODO add error messages
         """ Perform a trade and add the trade to trade history. """
         # gather variables
-        cost = buy_amt * next(r for r in local_resources if r[0] == resource.id)[2]
+        price_label = 'buy_price' if buy_amt >= 0 else 'sell_price'
+        cost = buy_amt * next(r for r in local_resources if r.id == resource.id)[price_label]
         inv: Inventory = self.get_resource(resource)
         # check limits
         if self.gold >= cost and inv.quantity >= -buy_amt:
