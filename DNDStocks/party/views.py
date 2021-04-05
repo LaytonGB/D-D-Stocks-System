@@ -1,3 +1,4 @@
+from pprint import pprint
 from typing import Any, Tuple
 from django.db import connection
 from django.shortcuts import redirect, render
@@ -21,12 +22,9 @@ def travel_page(request):
     all_resources = Resource.objects.all()
 
     # Add party travel location if needed
-    history = party.travel_history_set.order_by('-id')
-    if history is None or current_location != history.first():
-        try:
-            TravelHistory.objects.add_history(party, current_location, history.filter(location=current_location).visit_count + 1)
-        except:
-            TravelHistory.objects.add_history(party, current_location, 1)
+    # history = party.travel_history_set.order_by('-id')
+    # if history is None or current_location != history.first():
+    #     print(f'travel_page is calling to add history\nhistory: {history.first().location.name} | current_location: {current_location.name}')
 
     # Add party resources to inventory table if needed
     for r in all_resources:
@@ -99,27 +97,26 @@ def get_price(r:Resource, lr:LocationResource) -> float:
 def new_travel(request):
     new_location_id = request.POST.get('change_location_select')
     if new_location_id is not None:
-        party = Party.objects.get(id=1)
+        party: Party = Party.objects.get(id=1)
         new_location = Location.objects.get(id=new_location_id)
-        try:
-            visit_count = party.travel_history_set.filter(location_id=new_location_id).order_by('-id').first().visit_count
-        except:
-            visit_count = 1
+        request = party.travel_to(request, new_location)
 
-        TravelHistory.objects.add_history(party, new_location, visit_count)
+        # print('the travel function is calling to add history')
+        # TravelHistory.objects.add_history(party, new_location)
 
-        setattr(party, 'location', new_location)
-        setattr(party, 'journey_count', party.journey_count + 1)
-        party.save()
+        # print(f'BEFORE CHECK -> party.location: {party.location.name} | party.journey_count: {party.journey_count}')
+        # setattr(party, 'location', new_location)
+        # setattr(party, 'journey_count', party.journey_count + 1)
+        # party.save()
+        # print(f'AFTER CHECK -> party.location: {party.location.name} | party.journey_count: {party.journey_count}')
 
-    return redirect('/party/travel/')
+    return redirect('/party/travel/', request)
 
 def undo_travel(request):
     """ Undo the last journey, returning the party to the previous location
         and reverting all of their trades between the last journey and now. """
     party = Party.objects.get(id=1)
-    request = party.revert_journey(request)
-
+    request = party.revert_travel(request)
     return redirect('/party/travel/', request)
 
 def trade_deal(request):
@@ -136,7 +133,7 @@ def trade_deal(request):
         party: Party = Party.objects.get(id=1)
         local_resources, inventory, local_specialities = get_stocks(party)
 
-        party.trade(resource, trade_amt, local_resources)
+        request = party.trade(request, resource, trade_amt, local_resources)
 
     return redirect('/party/travel/', request)
 
@@ -148,21 +145,26 @@ def undo_trade(request):
 
 def history_page(request):
     party = Party.objects.first()
-    history = None
+    history: dict[int, object] = {}
     with connection.cursor() as cursor:
+        # get the travel history
         cursor.execute(f"""
             SELECT
-                trade.id,
-                l.name AS 'location',
-                r.name AS 'resource',
-                trade.quantity_gained AS 'quantity',
-                trade.money_spent AS 'gold'
-            FROM party_tradehistory AS trade, locations_location AS l, locations_resource AS r
-            LEFT JOIN party_travelhistory AS travel ON trade.location_hist_id=travel.id
-            WHERE travel.party_id={party.id} AND l.id=travel.location_id AND r.id=trade.resource_id
-            ORDER BY trade.id desc""")
+                travel.id AS travel_id,
+                loc.name AS location,
+                res.name AS resource,
+                trade.quantity_gained AS quantity,
+                trade.money_spent AS gold
+            FROM locations_location AS loc
+            LEFT join party_travelhistory AS travel ON loc.id=travel.location_id
+            LEFT join party_tradehistory AS trade ON travel.id=trade.location_hist_id
+            LEFT join locations_resource AS res ON trade.resource_id=res.id
+            WHERE travel.party_id={party.id}
+            ORDER BY travel.id DESC;
+        """)
         history = dictfetchall(cursor)
-        print(history)
+    print('--- PARTY HISTORY ---')
+    pprint(history)
     context = {
         'title': 'Party History',
         'history': history,

@@ -9,24 +9,35 @@
         <div class="col"></div>
     </div>
 
-    {% if trade_history %}
+    {% if history %}
     <div class="row container">
         <table class="w-100">
-            <tr>
+            <tr style="border-bottom: 2px solid black;">
                 <th>Location</th>
-                <th>Resource</th>
                 <th>Action</th>
                 <th>Quantity</th>
+                <th>Resource</th>
                 <th>Gold</th>
             </tr>
-            {% for t in trade_history %}
-            <tr>
-                <td>{{ t.location.name|capfirst }}</td>
-                <td>{{ t.resource.name|capfirst }}</td>
-                <td>{% if t.money_spent > 0 %} Bought {% else %} Sold {% endif %}</td>
-                <td>{{ t.quantity_gained|abs }}</td>
-                <td>{{ t.money_spent|abs|floatformat:2 }}</td>
-            </tr>
+            {% for t in history %}
+                {% if t %}
+                    {% ifchanged %}
+                        <tr style='border-top: 1px solid grey;' reference='{{ t.location }}'>
+                            <td colspan='100%'></td>
+                        </tr>
+                    {% endifchanged %}
+                    <tr>
+                        <td>{% ifchanged  %}<b>{{ t.location }}</b>{% endifchanged %}</td>
+                        <td>{% if t.gold > 0 %} Bought {% elif t.gold < 0 %} Sold {% endif %}</td>
+                        <td>{{ t.quantity|abs|floatformat:2 }}</td>
+                        <td>{% if t.resource != None %}{{ t.resource|capfirst }}{% endif %}</td>
+                        <td>{{ t.gold|floatformat:2 }}</td>
+                    </tr>
+                {% endif %}
+            {% empty %}
+                <tr>
+                    <td colspan='100%'>This party has no history, yet.</td>
+                </tr>
             {% endfor %}
         </table>
     </div>

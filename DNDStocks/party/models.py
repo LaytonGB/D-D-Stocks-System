@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.db import models
 from django.db.models import Sum
+from django.db.models.aggregates import Max
 from django.db.models.deletion import CASCADE, DO_NOTHING
 
 class ArticleManager(models.Manager):
@@ -31,69 +32,40 @@ class Party(models.Model):
     gold = models.FloatField(default=0)
     inventory = models.ManyToManyField('locations.Resource', through='Inventory')
     travel_history = models.ManyToManyField('locations.Location', related_name='history', through='TravelHistory')
+    class Meta:
+        ordering = ['-id']
     objects = PartyManager()
 
     def weight(self):
         return ( f'{self.resource_set.aggregate(total_weight=Sum("quantity"))["total_weight"]} lbs' )
     def get_resource(self, r):
-        """ Returns the inventory entry for the named resource for this party, or creates
+        """ Returns the inventory entry for the resource instance for this party, or creates
             the entry if one does not exist. """
         try:
-            i = self.resource_set.get(resource__name=r.name)
+            i = self.resource_set.get(resource_id=r.id)
         except:
             if r is None:
                 return
-            self.inventory.add(r)
-            i = self.resource_set.get(resource__name=r.name)
-            setattr(i, 'quantity', 0)
-            i.save()
+            i = self.inventory.add(r)
         return i
-    def trade(self, resource, trade_amt: float, local_resources: list) -> bool: # TODO add error messages
+    def trade(self, request, resource, buy_amt: float, local_resources: list): # TODO add error messages
         """ Perform a trade and add the trade to trade history. """
-        travel_hist = self.travel_history_set.order_by('-id').first()
-        if trade_amt > 0: # buying resources
-            print('buying')
-            # if party has gold, perform trade
-            cost = trade_amt * next(r for r in local_resources if r[0] == resource.id)[2]
-            print(f'gold:{self.gold} | cost:{cost}')
-            if self.gold >= cost:
-                print('gold sufficient')
-                try: # get inventory entry
-                    inv = self.resource_set.get(resource_id=resource.id)
-                except: # create inventory entry if it didn't exist
-                    inv = self.inventory.add(resource)
-                print('adjusting resources')
-                # reduce gold
-                setattr(self, 'gold', self.gold - cost)
-                self.save()
-                # increase inventory
-                setattr(inv, 'quantity', inv.quantity + trade_amt) # adjust
-                inv.save()
-                print('adding history')
-                # add to trade history
-                self.trade_history_set.add_history(self, travel_hist, resource, cost, trade_amt)
-            else:
-                return False
-        elif trade_amt < 0: # selling resources
-            trade_amt = -trade_amt # remove the negative on trade amount
-            # if party has resources, perform trade
-            profit = trade_amt * next(r for r in local_resources if r[0] == resource.id)[3]
-            try:
-                inv = self.resource_set.get(resource_id=resource.id)
-                if inv and inv.quantity >= trade_amt:
-                    # reduce inventory
-                    setattr(inv, 'quantity', inv.quantity - trade_amt)
-                    inv.save()
-                    # increase gold
-                    setattr(self, 'gold', self.gold + profit)
-                    self.save()
-                    # add to trade history
-                    self.trade_history_set.add_history(self, self.location, resource, -profit, -trade_amt)
-                else:
-                    return False
-            except:
-                return False
-        return True
+        # gather variables
+        cost = buy_amt * next(r for r in local_resources if r[0] == resource.id)[2]
+        inv: Inventory = self.get_resource(resource)
+        # check limits
+        if self.gold >= cost and inv.quantity >= -buy_amt:
+            # adjust gold
+            setattr(self, 'gold', self.gold - cost)
+            self.save()
+            # adjust resources
+            setattr(inv, 'quantity', inv.quantity + buy_amt)
+            inv.save()
+            # add history
+            self.trade_history_set.add_history(self, resource, cost, buy_amt)
+        else:
+            messages.error(request, 'Transaction failed: Gold or Resources were insufficient.')
+        return request
     def revert_trade(self, request, count=1):
         """ Revert one or more trade deals. Returns the number of trade deals successfully reverted. """
         print(f'Reverting trade...')
@@ -118,7 +90,15 @@ class Party(models.Model):
                 else:
                     messages.info(request, 'No trades were remaining, but it was requested that more be undone.')
         return request
-    def revert_journey(self, request, count=1):
+    def travel_to(self, request, new_location):
+        setattr(self, 'location', new_location)
+        setattr(self, 'journey_count', self.journey_count + 1)
+        self.save()
+        self.travel_history_set.add_history(self)
+        if self.travel_history_set.first().location != new_location:
+            messages.error(request, f'Something went wrong when adding travel history.')
+        return request
+    def revert_travel(self, request, count=1):
         if self.journey_count > 1:
             all_trades = list(self.trade_history_set.order_by('-id'))
             loc_trades = []
@@ -144,25 +124,36 @@ class Inventory(models.Model):
     quantity = models.FloatField(default=0)
 
 class TravelHistoryManager(models.Manager):
-    def add_history(self, party, location, count):
+    def add_history(self, party):
+        print('adding travel history')
+        old_visit_count: int
+        try:
+            old_visit_count = party.travel_history_set.filter(location_id=party.location_id).order_by('-id').first().visit_count
+        except:
+            old_visit_count = 0
         history = self.create(
             party = party,
-            location = location,
-            visit_count = count,
+            location = party.location,
+            visit_count = old_visit_count + 1,
         )
         return history
 class TravelHistory(models.Model):
     party = models.ForeignKey(Party, related_name='travel_history_set', on_delete=CASCADE)
     location = models.ForeignKey('locations.Location', related_name='travel_history_set', on_delete=DO_NOTHING)
     visit_count = models.IntegerField(default=1)
+    class Meta:
+        ordering = ['-id']
     objects = TravelHistoryManager()
 
 class TradeHistoryManager(models.Manager):
-    def add_history(self, party, travel_hist, resource, money_spent, quantity_gained):
+    def add_history(self, party, resource, money_spent, quantity_gained):
         print('history creation reached')
+        hist: TravelHistory = party.travel_history_set.first() or party.travel_history_set.add_history(party)
+        if hist.location.id != party.location.id:
+            hist = party.travel_history_set.add_history(party)
         return self.create(
             party = party,
-            location_hist = travel_hist,
+            location_hist = hist,
             resource = resource,
             money_spent = money_spent,
             quantity_gained = quantity_gained,
