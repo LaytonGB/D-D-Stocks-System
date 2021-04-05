@@ -105,16 +105,6 @@ def new_travel(request):
         party: Party = Party.objects.get(id=1)
         new_location = Location.objects.get(id=new_location_id)
         request = party.travel_to(request, new_location)
-
-        # print('the travel function is calling to add history')
-        # TravelHistory.objects.add_history(party, new_location)
-
-        # print(f'BEFORE CHECK -> party.location: {party.location.name} | party.journey_count: {party.journey_count}')
-        # setattr(party, 'location', new_location)
-        # setattr(party, 'journey_count', party.journey_count + 1)
-        # party.save()
-        # print(f'AFTER CHECK -> party.location: {party.location.name} | party.journey_count: {party.journey_count}')
-
     return redirect('/party/travel/', request)
 
 def undo_travel(request):
