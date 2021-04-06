@@ -140,6 +140,7 @@ def undo_trade(request):
 
 def history_page(request):
     party = Party.objects.first()
+    latest_trade = party.latest_trade()
     history: dict[int, object] = {}
     with connection.cursor() as cursor:
         # get the travel history
@@ -161,5 +162,6 @@ def history_page(request):
     context = {
         'title': 'Party History',
         'history': history,
+        'latest_trade': latest_trade,
     }
     return render(request, 'history.html', context)

@@ -4,9 +4,30 @@
 
 <div class="container text-center">
     <div class="row">
-        <div class="col"></div>
+        <div class="col text-left">
+            <a href="/party/travel/" class="btn btn-primary">Travel and Trade</a>
+        </div>
         <h1 class="col-auto">Party History</h1>
-        <div class="col"></div>
+        <div class="col text-right">
+            {% if party.journey_count > 1 %}
+                <form action="/party/travel/undo/" method="post">
+                    {% csrf_token %}
+                    <input type="submit"
+                        onclick="return confirm('Are you sure?\nAll trades at the current location will be undone.')"
+                        class="col-auto btn btn-warning"
+                        value="Undo Last Journey">
+                </form>
+            {% endif %}
+            {% if latest_trade %}
+                <form action="/party/trade/undo/" method="post" class="m-0 col-auto">
+                    {% csrf_token %}
+                    <input type="submit"
+                        onclick="return confirm('Are you sure you want to undo the last trade?')"
+                        class="col-auto btn btn-warning"
+                        value="Undo Last Trade">
+                </form>
+            {% endif %}
+        </div>
     </div>
 
     {% if history %}
