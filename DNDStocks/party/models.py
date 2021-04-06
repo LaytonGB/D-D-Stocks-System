@@ -1,7 +1,6 @@
 from django.contrib import messages
 from django.db import models
 from django.db.models import Sum
-from django.db.models.aggregates import Max
 from django.db.models.deletion import CASCADE, DO_NOTHING
 
 class ArticleManager(models.Manager):
@@ -50,7 +49,7 @@ class Party(models.Model):
         return i
     def latest_trade(self):
         return self.trade_history_set.first() or None
-    def trade(self, request, resource, buy_amt: float, local_resources: list): # TODO add error messages
+    def trade(self, request, resource, buy_amt: float, local_resources: list):
         """ Perform a trade and add the trade to trade history. """
         # gather variables
         price_label = 'buy_price' if buy_amt >= 0 else 'sell_price'
