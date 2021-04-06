@@ -1,6 +1,4 @@
-from pprint import pprint
 from typing import Any, Tuple
-from time import perf_counter
 
 from django.db import connection
 from django.shortcuts import redirect, render
