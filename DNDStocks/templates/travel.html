@@ -174,7 +174,10 @@
     const location_selector = document.getElementById('change_location_select');
     const location_form = document.getElementById('change_location_form');
     location_selector.addEventListener('change', function () {
-        if (this.value && this.value != '{{ current_location.id }}') location_form.submit();
+        if (this.value && this.value != '{{ current_location.id }}') {
+            const response = confirm(`Are you sure you want to travel to ${this[this.value].innerHTML}.`);
+            if (response) location_form.submit();
+        }
     })
 
     // variables
