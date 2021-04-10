@@ -175,7 +175,8 @@
     const location_form = document.getElementById('change_location_form');
     location_selector.addEventListener('change', function () {
         if (this.value && this.value != '{{ current_location.id }}') {
-            const response = confirm(`Are you sure you want to travel to ${this[this.value].innerHTML}.`);
+            const locName = Array.from(this.childNodes).find(x => x.value == this.value).innerHTML;
+            const response = confirm(`Are you sure you want to travel to ${locName}?`);
             if (response) location_form.submit();
         }
     })
@@ -243,14 +244,12 @@
             sell_feedback.innerHTML = `You don't have that much ${trade_resource.selectedOptions[0].innerHTML}.`;
             if (r) {
                 if (prof_loss === 'Cost' && total > {{ party.gold }}) buy_quantity.classList.add('is-invalid');
-                else {
-                    buy_quantity.classList.remove('is-invalid');
-                    party_has_gold = true;
-                }
-                if (prof_loss === 'Profit' && sell_quantity.value > r[2]) sell_quantity.classList.add('is-invalid');
+                else if (prof_loss === 'Profit' && sell_quantity.value > r.quantity) sell_quantity.classList.add('is-invalid');
                 else {
                     sell_quantity.classList.remove('is-invalid');
+                    buy_quantity.classList.remove('is-invalid');
                     party_has_resources = true;
+                    party_has_gold = true;
                 }
             }
 

@@ -73,23 +73,29 @@ class Party(models.Model):
         print(f'Reverting trade(s)...')
         trade_history = self.trade_history_set
         for n in range(1, count + 1):
-            print(f'Trade {n}:')
+            print(f'> Undoing Trade {n}:')
             last_trade: TradeHistory = trade_history.first()
             if last_trade is None:
                 messages.error(request, 'Could not undo last trade - There is no trade history.')
                 return request
             if trade_history is not None and last_trade is not None:
                 inv_res: Inventory = self.get_resource(last_trade.resource) # the specific inventory row
-                setattr(self, 'gold', self.gold - last_trade.gold_gained) # refund or charge party gold
-                self.save()
-                setattr(inv_res, 'quantity', inv_res.quantity + last_trade.quantity_gained) # refund or charge party inventory
-                inv_res.save()
-                if self.location_id is not last_trade.location_hist.location_id:
-                    messages.warning(request, 'Current location did not match up with the location of last trade.')
-                last_trade.delete() # delete the trade history entry
+                new_gold = self.gold - last_trade.gold_gained
+                new_inv_res_quantity = inv_res.quantity - last_trade.quantity_gained
+                if new_gold >= 0 and new_inv_res_quantity >= 0:
+                    setattr(self, 'gold', new_gold) # refund or charge party gold
+                    self.save()
+                    setattr(inv_res, 'quantity', new_inv_res_quantity) # refund or charge party inventory
+                    inv_res.save()
+                    if self.location_id is not last_trade.location_hist.location_id:
+                        messages.warning(request, 'Current location did not match up with the location of last trade.')
+                    last_trade.delete() # delete the trade history entry
+                else:
+                    messages.error(request, 'Could not undo any more trades because there were insufficient gold or resources.')
+                    break
             else:
                 if n == 1:
-                    messages.error(request, 'Last trade could not be undone.')
+                    messages.error(request, 'Last trade could not be undone. Unknown issue.')
                 else:
                     messages.info(request, 'No trades were remaining, but it was requested that more be undone.')
         return request
@@ -170,6 +176,8 @@ class TradeHistory(models.Model):
     resource = models.ForeignKey("locations.Resource", on_delete=DO_NOTHING)
     gold_gained = models.FloatField(null=True)
     quantity_gained = models.IntegerField(null=True)
+    class Meta:
+        ordering = ['-id']
     objects = TradeHistoryManager()
 
 # Player Character model
