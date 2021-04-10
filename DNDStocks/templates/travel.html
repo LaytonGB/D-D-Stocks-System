@@ -150,7 +150,9 @@
                         <h3 class="col" id="trade_output_text" name="trade_output_text"></h3>
                         <h3 class="col" id="trade_output_number" name="trade_output_number"></h3>
                         <div class="col">
-                            <button class="btn btn-warning" id="confirm_trade" style="visibility: hidden; opacity: 0%; transition: opacity .5s ease;">Make the Deal</button>
+                            <button class="btn btn-warning" id="confirm_trade"
+                                style="visibility: hidden; opacity: 0%; transition: opacity .5s ease;">
+                                Make the Deal</button>
                         </div>
                     </div>
                 </form>
@@ -214,7 +216,8 @@
 
     // Listen to confirm_trade button
     confirm_btn.addEventListener('onClick', function () {
-        if (trade_resource.value && bool(buy_quantity.value) != bool(sell_quantity.value)) {
+        if (trade_resource.value && bool(buy_quantity.value) !== bool(sell_quantity.value)) {
+            this.style.disabled = true;
             trade_form.submit();
         }
     });
