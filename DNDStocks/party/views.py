@@ -136,8 +136,10 @@ def undo_trade(request):
     """ Revert the party gold and inventory by refunding or restoring the last traded quantities. """
     party: Party = Party.objects.get(id=1)
     request = party.revert_trade(request)
-    print(dir(request))
-    return redirect('/party/travel/', request)
+    try:
+        return redirect(request.META.get('HTTP_REFERER').split(request.META.get('HTTP_HOST'))[1], request)
+    except:
+        return redirect('/party/travel/', request)
 
 def history_page(request):
     party = Party.objects.first()
