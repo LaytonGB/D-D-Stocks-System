@@ -1,0 +1,11 @@
+{% if messages %}
+<div
+    class="container rounded bg-dark justify-content-center align-content-center p-1 mb-2"
+>
+    {% for message in messages %}
+    <ul class="my-3 py-0{% if message.tags %} {{ message.tags }}{% endif %}">
+        {{ message }} {% if forloop.counter is not 1 %}<br />{% endif %}
+    </ul>
+    {% endfor %}
+</div>
+{% endif %}

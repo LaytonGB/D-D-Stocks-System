@@ -72,8 +72,9 @@ class Party(models.Model):
         """ Revert one or more trade deals. Returns the number of trade deals successfully reverted. """
         print(f'Reverting trade(s)...')
         trade_history = self.trade_history_set
+        successful_count = 0
         for n in range(1, count + 1):
-            print(f'> Undoing Trade {n}:')
+            print(f'> Undoing Trade {n}')
             last_trade: TradeHistory = trade_history.first()
             if last_trade is None:
                 messages.error(request, 'Could not undo last trade - There is no trade history.')
@@ -90,6 +91,7 @@ class Party(models.Model):
                     if self.location_id is not last_trade.location_hist.location_id:
                         messages.warning(request, 'Current location did not match up with the location of last trade.')
                     last_trade.delete() # delete the trade history entry
+                    successful_count += 1
                 else:
                     messages.error(request, 'Could not undo any more trades because there were insufficient gold or resources.')
                     break
@@ -98,6 +100,10 @@ class Party(models.Model):
                     messages.error(request, 'Last trade could not be undone. Unknown issue.')
                 else:
                     messages.info(request, 'No trades were remaining, but it was requested that more be undone.')
+        if successful_count >= 1:
+            messages.success(request,
+                (successful_count > 1 and f'{successful_count} trades undone.') or
+                (successful_count == 1 and f'Last trade undone.'))
         return request
     def latest_journey(self):
         return self.travel_history_set.first() or self.travel_history_set.add_history(self)
@@ -128,6 +134,7 @@ class Party(models.Model):
             setattr(self, 'journey_count', self.journey_count - 1) # revert journey count
             self.save()
             history.first().delete() # delete history entry
+            messages.success(request, 'Last travel undone.')
         return request
 
 class Inventory(models.Model):
